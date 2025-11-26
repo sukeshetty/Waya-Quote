@@ -6,6 +6,8 @@ export interface Flight {
   arrivalTime: string;
   arrivalAirport: string;
   date: string;
+  duration?: string;
+  stops?: string;
 }
 
 export interface Hotel {
@@ -15,6 +17,10 @@ export interface Hotel {
   checkOut: string;
   amenities: string[];
   roomType: string;
+  image?: string;
+  rating?: string;       // e.g., "4.8"
+  reviewCount?: string;  // e.g., "1,240 reviews"
+  recentReview?: string; // e.g., "Best stay ever! The pool was amazing."
 }
 
 export interface Activity {
@@ -28,12 +34,14 @@ export interface ItineraryDay {
   date: string;
   title: string;
   activities: Activity[];
+  image?: string;
 }
 
 export interface Restaurant {
   name: string;
   cuisine: string;
   description: string;
+  image?: string;
 }
 
 export interface TravelQuotation {
@@ -45,6 +53,7 @@ export interface TravelQuotation {
   totalPrice: string;
   currency: string;
   summary: string;
+  heroImage?: string;
   flights: Flight[];
   hotels: Hotel[];
   itinerary: ItineraryDay[];
@@ -52,6 +61,11 @@ export interface TravelQuotation {
   inclusions: string[];
   exclusions: string[];
   travelTips: string[];
+}
+
+export interface SavedQuotation extends TravelQuotation {
+  id: string;
+  createdAt: number;
 }
 
 export interface FileUpload {

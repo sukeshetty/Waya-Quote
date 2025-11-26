@@ -1,6 +1,6 @@
 import React from 'react';
 import { TravelQuotation } from '../types';
-import { Plane, Hotel, Calendar, CheckCircle, Info, MapPin, Utensils, Check, Clock, Globe, ArrowRight, Star, Shield } from 'lucide-react';
+import { Plane, Hotel, Calendar, CheckCircle, Info, MapPin, Utensils, Check, Clock, Globe, ArrowRight, Star, Shield, ThumbsUp, Quote } from 'lucide-react';
 
 interface QuotationPreviewProps {
   data: TravelQuotation | null;
@@ -19,14 +19,26 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
               <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
               <div className="absolute inset-0 border-4 border-t-waya-500 rounded-full animate-spin"></div>
               <div className="absolute inset-0 flex items-center justify-center">
+                {/* Waya.AI Logo SVG */}
                 <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 animate-pulse">
-                  <path d="M14 16L20 34L26 16M22 16L28 34L34 16" stroke="#0EA5E9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44Z" fill="url(#paint0_linear_loading)" fillOpacity="0.2"/>
+                  <path d="M14 16L20 34L26 16M22 16L28 34L34 16" stroke="url(#paint1_linear_loading)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                  <defs>
+                    <linearGradient id="paint0_linear_loading" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#0EA5E9"/>
+                      <stop offset="1" stopColor="#6366F1"/>
+                    </linearGradient>
+                    <linearGradient id="paint1_linear_loading" x1="14" y1="16" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#38BDF8"/>
+                      <stop offset="1" stopColor="#818CF8"/>
+                    </linearGradient>
+                  </defs>
                 </svg>
               </div>
            </div>
            <div>
              <h3 className="text-2xl font-serif font-bold text-slate-800">Curating your experience...</h3>
-             <p className="text-slate-600 mt-2">Generating personalized visuals & itinerary</p>
+             <p className="text-slate-600 mt-2">Checking live availability & retrieving reviews</p>
            </div>
         </div>
       </div>
@@ -43,6 +55,14 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
     );
   }
 
+  // --- Logic to detect view type (Flight Only vs Hotel Only vs Package) ---
+  const hasFlights = data.flights && data.flights.length > 0;
+  const hasHotels = data.hotels && data.hotels.length > 0;
+  const hasItinerary = data.itinerary && data.itinerary.length > 0;
+
+  const isFlightOnly = hasFlights && !hasHotels && !hasItinerary;
+  const isHotelOnly = hasHotels && !hasFlights && !hasItinerary;
+  
   // Fallbacks
   const displayInclusions = (data.inclusions && data.inclusions.length > 0) 
     ? data.inclusions 
@@ -57,12 +77,200 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
 
   const heroBg = data.heroImage || "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop";
 
+  // --- SPECIAL VIEW: FLIGHT ONLY ---
+  if (isFlightOnly) {
+     return (
+        <div id={id} className="bg-slate-100 min-h-screen font-sans text-slate-800 p-8 pb-20">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-700 to-blue-900 rounded-t-2xl p-6 text-white flex justify-between items-center shadow-lg">
+                <div>
+                   <h1 className="text-2xl font-bold flex items-center"><Plane className="mr-2" /> Flight Itinerary</h1>
+                   <p className="text-blue-200 text-sm mt-1">{data.flights.length} flights found for {data.destination}</p>
+                </div>
+                <div className="text-right">
+                   <div className="text-3xl font-bold">{data.totalPrice}</div>
+                   <div className="text-sm text-blue-200">{data.currency} Total</div>
+                </div>
+            </div>
+
+            {/* Sub-header / Tabs */}
+            <div className="bg-white rounded-b-2xl shadow-sm mb-6 flex border-b border-slate-200">
+               <div className="flex-1 py-4 text-center border-b-2 border-blue-600 font-bold text-blue-700 bg-blue-50">
+                  Recommended
+               </div>
+               <div className="flex-1 py-4 text-center border-b-2 border-transparent text-slate-500 hover:bg-slate-50">
+                  Cheapest
+               </div>
+               <div className="flex-1 py-4 text-center border-b-2 border-transparent text-slate-500 hover:bg-slate-50">
+                  Fastest
+               </div>
+            </div>
+
+            {/* Flight Cards */}
+            <div className="space-y-4">
+               {data.flights.map((flight, idx) => (
+                  <div key={idx} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                     <div className="flex flex-col md:flex-row items-center gap-6">
+                        {/* Airline Info */}
+                        <div className="w-full md:w-1/6 flex items-center gap-3">
+                           <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+                              <Plane className="text-slate-600" />
+                           </div>
+                           <div>
+                              <div className="font-bold text-slate-800">{flight.airline}</div>
+                              <div className="text-xs text-slate-500">{flight.flightNumber}</div>
+                           </div>
+                        </div>
+
+                        {/* Route Info */}
+                        <div className="flex-1 flex items-center justify-center gap-6 w-full">
+                           <div className="text-right min-w-[80px]">
+                              <div className="text-xl font-bold text-slate-800">{flight.departureTime}</div>
+                              <div className="text-xs text-slate-500 font-medium">{flight.departureAirport}</div>
+                           </div>
+                           
+                           <div className="flex-1 flex flex-col items-center px-4">
+                              <div className="text-xs text-slate-400 mb-1">{flight.duration || 'Duration --'}</div>
+                              <div className="w-full h-px bg-slate-300 relative flex items-center justify-center">
+                                 <div className={`w-2 h-2 rounded-full ${flight.stops === 'Non-stop' ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+                              </div>
+                              <div className={`text-xs mt-1 font-medium ${flight.stops === 'Non-stop' ? 'text-green-600' : 'text-orange-600'}`}>
+                                 {flight.stops || 'Direct'}
+                              </div>
+                           </div>
+
+                           <div className="text-left min-w-[80px]">
+                              <div className="text-xl font-bold text-slate-800">{flight.arrivalTime}</div>
+                              <div className="text-xs text-slate-500 font-medium">{flight.arrivalAirport}</div>
+                           </div>
+                        </div>
+
+                        {/* Price & Action */}
+                        <div className="w-full md:w-1/6 text-right pl-6 border-l border-slate-100">
+                           <div className="text-xl font-bold text-slate-900 mb-2">{data.currency} {Math.round(parseInt(data.totalPrice.replace(/[^0-9]/g, '')) / data.flights.length)}</div>
+                           <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors">
+                              Select
+                           </button>
+                        </div>
+                     </div>
+                     
+                     <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-4">
+                        <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-medium flex items-center">
+                           <CheckCircle className="w-3 h-3 mr-1" /> Baggage Included
+                        </span>
+                        <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded font-medium flex items-center">
+                           <Utensils className="w-3 h-3 mr-1" /> Meal Included
+                        </span>
+                     </div>
+                  </div>
+               ))}
+            </div>
+            {/* Footer */}
+            <div className="mt-12 text-center text-slate-400">
+                <div className="w-8 h-8 mx-auto mb-2 text-slate-300">
+                    {/* Simplified Waya Logo */}
+                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 16L20 34L26 16M22 16L28 34L34 16"/></svg>
+                </div>
+                <p>Generated by Waya.AI</p>
+            </div>
+        </div>
+     );
+  }
+
+  // --- SPECIAL VIEW: HOTEL ONLY ---
+  if (isHotelOnly) {
+     return (
+        <div id={id} className="bg-slate-50 min-h-screen font-sans text-slate-800 p-8 pb-20">
+           <div className="max-w-5xl mx-auto">
+              <div className="flex justify-between items-end mb-8">
+                 <div>
+                    <h1 className="text-3xl font-serif font-bold text-slate-900">Stays in {data.destination}</h1>
+                    <p className="text-slate-500">{data.hotels.length} properties found • {data.startDate} - {data.endDate}</p>
+                 </div>
+                 <div className="flex gap-2">
+                    <button className="px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-medium shadow-sm hover:bg-slate-50">Filter</button>
+                    <button className="px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-medium shadow-sm hover:bg-slate-50">Sort by: Recommended</button>
+                 </div>
+              </div>
+
+              <div className="space-y-6">
+                 {data.hotels.map((hotel, idx) => (
+                    <div key={idx} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row hover:shadow-md transition-shadow group">
+                       <div className="md:w-1/3 h-64 md:h-auto relative overflow-hidden">
+                          <img 
+                             src={hotel.image || "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80"} 
+                             alt={hotel.name}
+                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+                          <button className="absolute top-3 right-3 p-2 bg-white/80 rounded-full hover:bg-white text-slate-600 transition-colors">
+                             <ThumbsUp className="w-4 h-4" />
+                          </button>
+                       </div>
+                       <div className="flex-1 p-6 flex flex-col justify-between">
+                          <div>
+                             <div className="flex justify-between items-start">
+                                <div>
+                                   <h2 className="text-xl font-bold text-slate-900 mb-1">{hotel.name}</h2>
+                                   <p className="text-sm text-slate-500 flex items-center mb-2">
+                                      <MapPin className="w-3 h-3 mr-1" /> {hotel.location} • <a href="#" className="underline ml-1">Map</a>
+                                   </p>
+                                </div>
+                                {hotel.rating && (
+                                    <div className="flex flex-col items-end">
+                                        <div className="flex items-center bg-blue-900 text-white px-2 py-1 rounded-lg font-bold text-sm">
+                                            {hotel.rating}
+                                        </div>
+                                        <span className="text-xs text-slate-500 mt-1">{hotel.reviewCount || 'Reviews'}</span>
+                                    </div>
+                                )}
+                             </div>
+                             
+                             <div className="flex flex-wrap gap-2 my-4">
+                                {hotel.amenities.slice(0, 4).map((am, i) => (
+                                   <span key={i} className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-md border border-slate-200">
+                                      {am}
+                                   </span>
+                                ))}
+                             </div>
+
+                             {hotel.recentReview && (
+                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex gap-2">
+                                    <Quote className="w-4 h-4 text-blue-400 flex-shrink-0 fill-current" />
+                                    <p className="text-xs text-blue-800 italic line-clamp-2">"{hotel.recentReview}"</p>
+                                </div>
+                             )}
+                          </div>
+                          
+                          <div className="flex items-end justify-between mt-4 pt-4 border-t border-slate-100">
+                             <div>
+                                <div className="text-green-600 text-xs font-bold mb-1">Free Cancellation</div>
+                                <div className="text-slate-500 text-xs">{hotel.roomType}</div>
+                             </div>
+                             <div className="text-right">
+                                <div className="text-2xl font-bold text-slate-900">{data.currency} {Math.round(parseInt(data.totalPrice.replace(/[^0-9]/g, '')) / data.hotels.length)}</div>
+                                <div className="text-xs text-slate-500 mb-2">Total price incl. taxes</div>
+                                <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors flex items-center">
+                                   Check Availability <ArrowRight className="w-4 h-4 ml-1" />
+                                </button>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+           </div>
+        </div>
+     );
+  }
+
+
+  // --- DEFAULT: PACKAGE VIEW (Mixed) ---
   return (
     <div 
       id={id}
       className="bg-slate-50 w-full min-h-screen relative font-sans text-slate-800 pb-20 overflow-hidden"
     >
-      {/* 1. Immersive Hero Section (Inspired by Image 1) */}
+      {/* 1. Immersive Hero Section */}
       <div className="relative h-[85vh] w-full group">
          <img 
             src={heroBg} 
@@ -160,7 +368,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
 
       <div className="max-w-5xl mx-auto px-6 space-y-20">
          
-         {/* 3. Summary & Inclusions (Inspired by Image 2 - Pills) */}
+         {/* 3. Summary & Inclusions */}
          <section className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-2">
                <h3 className="text-3xl font-serif font-bold text-slate-900 mb-6">The Experience</h3>
@@ -204,6 +412,12 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                            <div className="absolute top-4 right-4 bg-white/90 backdrop-blur text-slate-900 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
                               {hotel.roomType}
                            </div>
+                           {hotel.rating && (
+                               <div className="absolute bottom-4 left-4 flex items-center bg-blue-900/90 text-white px-2 py-1 rounded-lg backdrop-blur-sm">
+                                   <span className="font-bold text-sm mr-1">{hotel.rating}</span>
+                                   <span className="text-[10px] opacity-80">Excellent</span>
+                               </div>
+                           )}
                         </div>
                         <div className="p-6">
                            <div className="flex justify-between items-start mb-2">
@@ -215,6 +429,13 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                            <p className="text-slate-500 text-sm mb-4 flex items-center">
                               <MapPin className="w-3 h-3 mr-1" /> {hotel.location}
                            </p>
+                           
+                           {hotel.recentReview && (
+                               <div className="mb-4 bg-slate-50 p-3 rounded-xl text-xs text-slate-600 italic border border-slate-100">
+                                   "{hotel.recentReview}"
+                               </div>
+                           )}
+
                            <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-100">
                               {hotel.amenities?.slice(0, 3).map((am, i) => (
                                  <span key={i} className="text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded-md">{am}</span>
@@ -247,32 +468,39 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                         </div>
 
                         {/* Content Card */}
-                        <div className="flex-1 bg-white rounded-2xl p-6 shadow-md border border-slate-100 hover:shadow-lg transition-shadow">
-                           <div className="flex justify-between items-start mb-4">
-                              <h4 className="text-xl font-bold text-slate-800">{day.title}</h4>
-                              {day.activities?.[0]?.location && (
-                                <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-md font-medium">
-                                   {day.activities[0].location}
-                                </span>
-                              )}
+                        <div className="flex-1 bg-white rounded-2xl shadow-md border border-slate-100 hover:shadow-lg transition-shadow overflow-hidden">
+                           {day.image && (
+                               <div className="h-48 w-full relative">
+                                    <img src={day.image} className="w-full h-full object-cover" alt={day.title} />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                    <h4 className="absolute bottom-4 left-6 text-xl font-bold text-white shadow-sm">{day.title}</h4>
+                               </div>
+                           )}
+                           <div className="p-6">
+                              {!day.image && <h4 className="text-xl font-bold text-slate-800 mb-4">{day.title}</h4>}
+                              <div className="flex justify-between items-start mb-4">
+                                 {day.activities?.[0]?.location && !day.image && (
+                                   <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-md font-medium">
+                                      {day.activities[0].location}
+                                   </span>
+                                 )}
+                              </div>
+                              
+                              <ul className="space-y-4">
+                                 {day.activities.map((act, actIdx) => (
+                                    <li key={actIdx} className="flex items-start gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                                       <div className="flex-shrink-0 w-16 pt-1">
+                                          <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded-md block text-center">
+                                             {act.time}
+                                          </span>
+                                       </div>
+                                       <div>
+                                          <p className="text-slate-700 leading-snug">{act.description}</p>
+                                       </div>
+                                    </li>
+                                 ))}
+                              </ul>
                            </div>
-                           
-                           {/* Day Image (If we had one, but currently we rely on activity text. Could be enhanced later) */}
-                           
-                           <ul className="space-y-4">
-                              {day.activities.map((act, actIdx) => (
-                                 <li key={actIdx} className="flex items-start gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                                    <div className="flex-shrink-0 w-16 pt-1">
-                                       <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded-md block text-center">
-                                          {act.time}
-                                       </span>
-                                    </div>
-                                    <div>
-                                       <p className="text-slate-700 leading-snug">{act.description}</p>
-                                    </div>
-                                 </li>
-                              ))}
-                           </ul>
                         </div>
                      </div>
                   </div>
@@ -348,6 +576,13 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                                  <div className="text-slate-400">{flight.arrivalAirport}</div>
                               </div>
                            </div>
+                           {/* Add Stops/Duration if available */}
+                           {(flight.duration || flight.stops) && (
+                              <div className="hidden md:block text-right text-xs text-slate-300 min-w-[80px]">
+                                  {flight.duration && <div>{flight.duration}</div>}
+                                  {flight.stops && <div className="text-waya-300">{flight.stops}</div>}
+                              </div>
+                           )}
                         </div>
                      </div>
                   ))}

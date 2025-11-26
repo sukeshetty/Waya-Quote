@@ -9,9 +9,27 @@ interface QuotationPreviewProps {
   onUpdatePrice?: (newPrice: string) => void;
 }
 
+// Curated list of high-quality food images for fallbacks
+const FALLBACK_FOOD_IMAGES = [
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80", // Fine dining
+  "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&q=80", // Cocktails/Bar
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80", // Plated steak/main
+  "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80", // Comfort food
+  "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&q=80", // Salad/Fresh
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&q=80", // Pizza
+  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80", // French cuisine
+];
+
+const getFallbackImage = (index: number) => {
+    return FALLBACK_FOOD_IMAGES[index % FALLBACK_FOOD_IMAGES.length];
+};
+
 const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id, onUpdatePrice }) => {
   const [isEditingPrice, setIsEditingPrice] = useState(false);
   const [tempPrice, setTempPrice] = useState('');
+
+  // Standard container class for alignment consistency
+  const CONTAINER_CLASS = "max-w-5xl mx-auto px-6 md:px-8";
 
   // Helper to handle broken images
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -104,113 +122,121 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id, 
   // --- SPECIAL VIEW: FLIGHT ONLY ---
   if (isFlightOnly) {
      return (
-        <div id={id} className="bg-slate-100 min-h-screen font-sans text-slate-800 p-8 pb-20">
+        <div id={id} className="bg-slate-100 min-h-screen font-sans text-slate-800 pb-20">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-700 to-blue-900 rounded-t-2xl p-6 text-white flex justify-between items-center shadow-lg">
-                <div>
-                   <h1 className="text-2xl font-bold flex items-center"><Plane className="mr-2" /> Flight Itinerary</h1>
-                   <p className="text-blue-200 text-sm mt-1">{data.flights.length} flights found for {data.destination}</p>
-                </div>
-                <div className="text-right">
-                   {isEditingPrice ? (
-                       <div className="flex items-center gap-2">
-                           <input 
-                               type="text" 
-                               value={tempPrice}
-                               onChange={(e) => setTempPrice(e.target.value)}
-                               className="bg-blue-800 text-white border border-blue-500 rounded px-2 py-1 w-32 text-right font-bold"
-                           />
-                           <button onClick={savePrice} className="bg-green-500 p-1 rounded hover:bg-green-600"><Check className="w-4 h-4" /></button>
-                       </div>
-                   ) : (
-                       <div className="flex items-center justify-end gap-2 group cursor-pointer" onClick={startEditingPrice}>
-                           <div className="text-3xl font-bold">{data.totalPrice}</div>
-                           <Edit2 className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                       </div>
-                   )}
-                   <div className="text-sm text-blue-200">{data.currency} Total</div>
+            <div className="bg-gradient-to-r from-blue-700 to-blue-900 pt-8 pb-12 text-white shadow-lg">
+                <div className={CONTAINER_CLASS}>
+                    <div className="flex justify-between items-center">
+                        <div>
+                           <h1 className="text-2xl font-bold flex items-center"><Plane className="mr-2" /> Flight Itinerary</h1>
+                           <p className="text-blue-200 text-sm mt-1">{data.flights.length} flights found for {data.destination}</p>
+                        </div>
+                        <div className="text-right">
+                           {isEditingPrice ? (
+                               <div className="flex items-center gap-2">
+                                   <input 
+                                       type="text" 
+                                       value={tempPrice}
+                                       onChange={(e) => setTempPrice(e.target.value)}
+                                       className="bg-blue-800 text-white border border-blue-500 rounded px-2 py-1 w-32 text-right font-bold"
+                                   />
+                                   <button onClick={savePrice} className="bg-green-500 p-1 rounded hover:bg-green-600"><Check className="w-4 h-4" /></button>
+                               </div>
+                           ) : (
+                               <div className="flex items-center justify-end gap-2 group cursor-pointer" onClick={startEditingPrice}>
+                                   <div className="text-3xl font-bold">{data.totalPrice}</div>
+                                   <Edit2 className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                               </div>
+                           )}
+                           <div className="text-sm text-blue-200">{data.currency} Total</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Sub-header / Tabs */}
-            <div className="bg-white rounded-b-2xl shadow-sm mb-6 flex border-b border-slate-200">
-               <div className="flex-1 py-4 text-center border-b-2 border-blue-600 font-bold text-blue-700 bg-blue-50">
-                  Recommended
-               </div>
-               <div className="flex-1 py-4 text-center border-b-2 border-transparent text-slate-500 hover:bg-slate-50">
-                  Cheapest
-               </div>
-               <div className="flex-1 py-4 text-center border-b-2 border-transparent text-slate-500 hover:bg-slate-50">
-                  Fastest
-               </div>
-            </div>
-
-            {/* Flight Cards */}
-            <div className="space-y-4">
-               {data.flights.map((flight, idx) => (
-                  <div key={idx} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
-                     <div className="flex flex-col md:flex-row items-center gap-6">
-                        {/* Airline Info */}
-                        <div className="w-full md:w-1/6 flex items-center gap-3">
-                           <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
-                              <Plane className="text-slate-600" />
-                           </div>
-                           <div>
-                              <div className="font-bold text-slate-800">{flight.airline}</div>
-                              <div className="text-xs text-slate-500">{flight.flightNumber}</div>
-                           </div>
-                        </div>
-
-                        {/* Route Info */}
-                        <div className="flex-1 flex items-center justify-center gap-6 w-full">
-                           <div className="text-right min-w-[80px]">
-                              <div className="text-xl font-bold text-slate-800">{flight.departureTime}</div>
-                              <div className="text-xs text-slate-500 font-medium">{flight.departureAirport}</div>
-                           </div>
-                           
-                           <div className="flex-1 flex flex-col items-center px-4">
-                              <div className="text-xs text-slate-400 mb-1">{flight.duration || 'Duration --'}</div>
-                              <div className="w-full h-px bg-slate-300 relative flex items-center justify-center">
-                                 <div className={`w-2 h-2 rounded-full ${flight.stops === 'Non-stop' ? 'bg-green-500' : 'bg-orange-500'}`}></div>
-                              </div>
-                              <div className={`text-xs mt-1 font-medium ${flight.stops === 'Non-stop' ? 'text-green-600' : 'text-orange-600'}`}>
-                                 {flight.stops || 'Direct'}
-                              </div>
-                           </div>
-
-                           <div className="text-left min-w-[80px]">
-                              <div className="text-xl font-bold text-slate-800">{flight.arrivalTime}</div>
-                              <div className="text-xs text-slate-500 font-medium">{flight.arrivalAirport}</div>
-                           </div>
-                        </div>
-
-                        {/* Price & Action */}
-                        <div className="w-full md:w-1/6 text-right pl-6 border-l border-slate-100">
-                           <div className="text-xl font-bold text-slate-900 mb-2">{data.currency} {Math.round(parseInt(data.totalPrice.replace(/[^0-9]/g, '')) / data.flights.length)}</div>
-                           <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors">
-                              Select
-                           </button>
-                        </div>
-                     </div>
-                     
-                     <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-4">
-                        <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-medium flex items-center">
-                           <CheckCircle className="w-3 h-3 mr-1" /> Baggage Included
-                        </span>
-                        <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded font-medium flex items-center">
-                           <Utensils className="w-3 h-3 mr-1" /> Meal Included
-                        </span>
-                     </div>
-                  </div>
-               ))}
-            </div>
-            {/* Footer */}
-            <div className="mt-12 text-center text-slate-400">
-                <div className="w-8 h-8 mx-auto mb-2 text-slate-300">
-                    {/* Simplified Waya Logo */}
-                    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 16L20 34L26 16M22 16L28 34L34 16"/></svg>
+            {/* Content Container */}
+            <div className={CONTAINER_CLASS}>
+                {/* Sub-header / Tabs */}
+                <div className="bg-white rounded-xl shadow-sm -mt-6 mb-6 flex border border-slate-200 overflow-hidden">
+                   <div className="flex-1 py-4 text-center border-b-2 border-blue-600 font-bold text-blue-700 bg-blue-50">
+                      Recommended
+                   </div>
+                   <div className="flex-1 py-4 text-center border-b-2 border-transparent text-slate-500 hover:bg-slate-50">
+                      Cheapest
+                   </div>
+                   <div className="flex-1 py-4 text-center border-b-2 border-transparent text-slate-500 hover:bg-slate-50">
+                      Fastest
+                   </div>
                 </div>
-                <p>Generated by Waya.AI</p>
+
+                {/* Flight Cards */}
+                <div className="space-y-4">
+                   {data.flights.map((flight, idx) => (
+                      <div key={idx} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+                         <div className="flex flex-col md:flex-row items-center gap-6">
+                            {/* Airline Info */}
+                            <div className="w-full md:w-1/6 flex items-center gap-3">
+                               <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+                                  <Plane className="text-slate-600" />
+                               </div>
+                               <div>
+                                  <div className="font-bold text-slate-800">{flight.airline}</div>
+                                  <div className="text-xs text-slate-500">{flight.flightNumber}</div>
+                               </div>
+                            </div>
+
+                            {/* Route Info */}
+                            <div className="flex-1 flex items-center justify-center gap-6 w-full">
+                               <div className="text-right min-w-[80px]">
+                                  <div className="text-xl font-bold text-slate-800">{flight.departureTime}</div>
+                                  <div className="text-xs text-slate-500 font-medium">{flight.departureAirport}</div>
+                               </div>
+                               
+                               <div className="flex-1 flex flex-col items-center px-4">
+                                  <div className="text-xs text-slate-400 mb-1">{flight.duration || 'Duration --'}</div>
+                                  <div className="w-full h-px bg-slate-300 relative flex items-center justify-center">
+                                     <div className={`w-2 h-2 rounded-full ${flight.stops === 'Non-stop' ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+                                  </div>
+                                  <div className={`text-xs mt-1 font-medium ${flight.stops === 'Non-stop' ? 'text-green-600' : 'text-orange-600'}`}>
+                                     {flight.stops || 'Direct'}
+                                  </div>
+                               </div>
+
+                               <div className="text-left min-w-[80px]">
+                                  <div className="text-xl font-bold text-slate-800">{flight.arrivalTime}</div>
+                                  <div className="text-xs text-slate-500 font-medium">{flight.arrivalAirport}</div>
+                               </div>
+                            </div>
+
+                            {/* Price & Action */}
+                            <div className="w-full md:w-1/6 text-right pl-6 border-l border-slate-100">
+                               <div className="text-xl font-bold text-slate-900 mb-2">{data.currency} {Math.round(parseInt(data.totalPrice.replace(/[^0-9]/g, '')) / data.flights.length)}</div>
+                               <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors">
+                                  Select
+                               </button>
+                            </div>
+                         </div>
+                         
+                         <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-4">
+                            <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-medium flex items-center">
+                               <CheckCircle className="w-3 h-3 mr-1" /> Baggage Included
+                            </span>
+                            <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded font-medium flex items-center">
+                               <Utensils className="w-3 h-3 mr-1" /> Meal Included
+                            </span>
+                         </div>
+                      </div>
+                   ))}
+                </div>
+
+                {/* Footer */}
+                <div className="mt-12 text-center text-slate-400">
+                    <div className="w-8 h-8 mx-auto mb-2 text-slate-300">
+                        {/* Simplified Waya Logo */}
+                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 16L20 34L26 16M22 16L28 34L34 16"/></svg>
+                    </div>
+                    <p>Generated by Waya.AI</p>
+                </div>
             </div>
         </div>
      );
@@ -219,8 +245,8 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id, 
   // --- SPECIAL VIEW: HOTEL ONLY ---
   if (isHotelOnly) {
      return (
-        <div id={id} className="bg-slate-50 min-h-screen font-sans text-slate-800 p-8 pb-20">
-           <div className="max-w-5xl mx-auto">
+        <div id={id} className="bg-slate-50 min-h-screen font-sans text-slate-800 pb-20 pt-12">
+           <div className={CONTAINER_CLASS}>
               <div className="flex justify-between items-end mb-8">
                  <div>
                     <h1 className="text-3xl font-serif font-bold text-slate-900">Stays in {data.destination}</h1>
@@ -272,8 +298,6 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id, 
                                    </span>
                                 ))}
                              </div>
-
-                             {/* Removed customer review text as requested */}
                           </div>
                           
                           <div className="flex items-end justify-between mt-4 pt-4 border-t border-slate-100">
@@ -330,111 +354,117 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id, 
             </div>
          </div>
 
-         {/* Hero Content (Bottom Left) */}
-         <div className="absolute bottom-0 left-0 w-full p-8 md:p-16 z-10">
-            <div className="max-w-4xl space-y-6">
-               <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-orange-500/20 backdrop-blur-sm border border-orange-500/30 text-orange-200 text-xs font-bold uppercase tracking-wider">
-                  <Globe className="w-3 h-3" />
-                  <span>{data.destination}</span>
-               </div>
-               
-               <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold text-white leading-[0.9] drop-shadow-2xl">
-                  {data.tripTitle}
-               </h1>
+         {/* Hero Content (Bottom Center/Left) */}
+         <div className="absolute bottom-0 left-0 w-full pb-16 z-10">
+            <div className={CONTAINER_CLASS}>
+                <div className="space-y-6">
+                   <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-md bg-orange-500/20 backdrop-blur-sm border border-orange-500/30 text-orange-200 text-xs font-bold uppercase tracking-wider">
+                      <Globe className="w-3 h-3" />
+                      <span>{data.destination}</span>
+                   </div>
+                   
+                   <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold text-white leading-[0.9] drop-shadow-2xl">
+                      {data.tripTitle}
+                   </h1>
 
-               <div className="flex flex-col md:flex-row items-start md:items-center gap-4 pt-4">
-                  <div className="flex items-center space-x-2 text-slate-200 text-lg">
-                     <Calendar className="w-5 h-5 text-orange-400" />
-                     <span>{data.startDate}</span>
-                     <span className="opacity-50 mx-2">—</span>
-                     <span>{data.endDate}</span>
-                  </div>
-                  
-                  <div className="hidden md:block w-px h-8 bg-white/20 mx-4"></div>
+                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4 pt-4">
+                      <div className="flex items-center space-x-2 text-slate-200 text-lg">
+                         <Calendar className="w-5 h-5 text-orange-400" />
+                         <span>{data.startDate}</span>
+                         <span className="opacity-50 mx-2">—</span>
+                         <span>{data.endDate}</span>
+                      </div>
+                      
+                      <div className="hidden md:block w-px h-8 bg-white/20 mx-4"></div>
 
-                  <div className="bg-white text-slate-900 px-6 py-3 rounded-full font-bold text-lg shadow-xl flex items-center transform transition-transform cursor-pointer hover:bg-slate-50">
-                     {isEditingPrice ? (
-                       <div className="flex items-center gap-2">
-                           <input 
-                               type="text" 
-                               value={tempPrice}
-                               onChange={(e) => setTempPrice(e.target.value)}
-                               className="bg-slate-100 text-slate-900 border border-slate-300 rounded px-2 py-1 w-32 outline-none text-right font-bold"
-                               autoFocus
-                           />
-                           <button onClick={savePrice} className="text-green-600 hover:text-green-700"><Check className="w-5 h-5" /></button>
-                       </div>
-                     ) : (
-                       <div onClick={startEditingPrice} className="flex items-center gap-2 group">
-                          <span>{data.totalPrice}</span>
-                          <span className="text-sm font-normal text-slate-500">{data.currency}</span>
-                          <Edit2 className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                       </div>
-                     )}
-                  </div>
-               </div>
+                      <div className="bg-white text-slate-900 px-6 py-3 rounded-full font-bold text-lg shadow-xl flex items-center transform transition-transform cursor-pointer hover:bg-slate-50">
+                         {isEditingPrice ? (
+                           <div className="flex items-center gap-2">
+                               <input 
+                                   type="text" 
+                                   value={tempPrice}
+                                   onChange={(e) => setTempPrice(e.target.value)}
+                                   className="bg-slate-100 text-slate-900 border border-slate-300 rounded px-2 py-1 w-32 outline-none text-right font-bold"
+                                   autoFocus
+                               />
+                               <button onClick={savePrice} className="text-green-600 hover:text-green-700"><Check className="w-5 h-5" /></button>
+                           </div>
+                         ) : (
+                           <div onClick={startEditingPrice} className="flex items-center gap-2 group">
+                              <span>{data.totalPrice}</span>
+                              <span className="text-sm font-normal text-slate-500">{data.currency}</span>
+                              <Edit2 className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                           </div>
+                         )}
+                      </div>
+                   </div>
+                </div>
             </div>
          </div>
       </div>
 
-      {/* 2. Floating Stats Bar (Glassmorphism) */}
-      <div className="relative z-20 px-6 -mt-8 mb-12">
-        <div className="max-w-6xl mx-auto bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6 flex flex-wrap justify-between gap-6">
-           <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                 <Plane className="w-6 h-6" />
-              </div>
-              <div>
-                 <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Flight Status</p>
-                 <p className="font-bold text-slate-800">{data.flights && data.flights.length > 0 ? 'Included' : 'Not Included'}</p>
-              </div>
-           </div>
-           <div className="flex items-center space-x-4">
-              <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-                 <Hotel className="w-6 h-6" />
-              </div>
-              <div>
-                 <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Accommodation</p>
-                 <p className="font-bold text-slate-800">{data.hotels?.length || 0} Premium Stays</p>
-              </div>
-           </div>
-           <div className="flex items-center space-x-4">
-              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-                 <Shield className="w-6 h-6" />
-              </div>
-              <div>
-                 <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Trip Protection</p>
-                 <p className="font-bold text-slate-800">Verified</p>
-              </div>
-           </div>
-           <div className="flex items-center space-x-4">
-              <div className="p-3 bg-orange-50 text-orange-600 rounded-xl">
-                 <Star className="w-6 h-6" />
-              </div>
-              <div>
-                 <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Experience Level</p>
-                 <p className="font-bold text-slate-800">Luxury / Private</p>
-              </div>
-           </div>
+      {/* 2. Floating Stats Bar (Glassmorphism) - UPDATED FOR ALIGNMENT */}
+      <div className="relative z-20 -mt-8 mb-12">
+        <div className={`${CONTAINER_CLASS}`}>
+            {/* Switched to grid-cols-2 lg:grid-cols-4 for better responsiveness */}
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6 grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl flex-shrink-0">
+                        <Plane className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Flight Status</p>
+                        <p className="font-bold text-slate-800">{data.flights && data.flights.length > 0 ? 'Included' : 'Not Included'}</p>
+                    </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-purple-50 text-purple-600 rounded-xl flex-shrink-0">
+                        <Hotel className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Accommodation</p>
+                        <p className="font-bold text-slate-800">{data.hotels?.length || 0} Premium Stays</p>
+                    </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl flex-shrink-0">
+                        <Shield className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Trip Protection</p>
+                        <p className="font-bold text-slate-800">Verified</p>
+                    </div>
+                </div>
+                <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-orange-50 text-orange-600 rounded-xl flex-shrink-0">
+                        <Star className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Experience Level</p>
+                        <p className="font-bold text-slate-800">Luxury / Private</p>
+                    </div>
+                </div>
+            </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 space-y-20">
+      <div className={`${CONTAINER_CLASS} space-y-20`}>
          
-         {/* 3. Summary & Inclusions - Redesigned */}
+         {/* 3. Summary & Inclusions - Left Aligned for consistency */}
          <section className="flex flex-col gap-12">
-            <div className="text-center max-w-4xl mx-auto">
+            <div className="text-left w-full">
                <h3 className="text-3xl font-serif font-bold text-slate-900 mb-6">The Experience</h3>
                <p className="text-lg text-slate-600 leading-relaxed font-light">
                   {data.summary}
                </p>
             </div>
-            <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center">
-               <h4 className="font-bold text-slate-900 mb-6 flex items-center justify-center">
+            
+            <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100">
+               <h4 className="font-bold text-slate-900 mb-6 flex items-center">
                   <CheckCircle className="w-5 h-5 mr-2 text-emerald-500" />
                   Package Inclusions
                </h4>
-               <div className="flex flex-wrap justify-center gap-3">
+               <div className="flex flex-wrap justify-start gap-3">
                   {displayInclusions.map((item, i) => (
                      <span key={i} className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-sm font-semibold rounded-full border border-slate-200 transition-colors cursor-default">
                         {item}
@@ -484,8 +514,6 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id, 
                               <MapPin className="w-3 h-3 mr-1" /> {hotel.location}
                            </p>
                            
-                           {/* Removed review text for cleaner UI */}
-
                            <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-100">
                               {hotel.amenities?.slice(0, 3).map((am, i) => (
                                  <span key={i} className="text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded-md">{am}</span>
@@ -501,62 +529,61 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id, 
             </section>
          )}
 
-         {/* 5. Itinerary Timeline */}
+         {/* 5. Itinerary Timeline - Refactored for alignment */}
          <section>
             <h3 className="text-3xl font-serif font-bold text-slate-900 mb-10">Your Daily Itinerary</h3>
-            <div className="relative border-l-2 border-slate-200 ml-4 md:ml-10 space-y-12 pb-12">
+            {/* Using a grid/flex layout to ensure perfect alignment without arbitrary margins */}
+            <div className="space-y-0">
                {data.itinerary?.map((day, idx) => (
-                  <div key={idx} className="relative pl-8 md:pl-12 group">
-                     {/* Timeline Dot */}
-                     <div className="absolute -left-[9px] top-0 w-5 h-5 rounded-full bg-white border-4 border-orange-500 shadow-sm group-hover:scale-125 transition-transform"></div>
-                     
-                     <div className="flex flex-col md:flex-row md:items-start gap-6">
-                        {/* Date Badge */}
-                        <div className="flex-shrink-0 w-20 text-center">
-                           <span className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Day {day.day}</span>
-                           <span className="block text-lg font-bold text-slate-800">{day.date.split(',')[0]}</span>
-                        </div>
+                  <div key={idx} className="flex gap-6 md:gap-8 group">
+                     {/* Left Column: Date Marker & Line */}
+                     <div className="flex flex-col items-center flex-shrink-0 w-16 md:w-20 pt-2">
+                        <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Day</div>
+                        <div className="text-xl font-bold text-slate-800 mb-2">{day.day}</div>
+                        {/* Connecting Line */}
+                        <div className="flex-1 w-px bg-slate-200 group-last:bg-transparent min-h-[40px]"></div>
+                     </div>
 
-                        {/* Content Card */}
-                        <div className="flex-1 bg-white rounded-2xl shadow-md border border-slate-100 hover:shadow-lg transition-shadow overflow-hidden">
-                           {day.image && (
-                               <div className="h-48 w-full relative">
-                                    <img 
-                                        src={day.image} 
-                                        className="w-full h-full object-cover" 
-                                        alt={day.title} 
-                                        onError={handleImageError}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                                    <h4 className="absolute bottom-4 left-6 text-xl font-bold text-white shadow-sm">{day.title}</h4>
-                               </div>
-                           )}
-                           <div className="p-6">
-                              {!day.image && <h4 className="text-xl font-bold text-slate-800 mb-4">{day.title}</h4>}
-                              <div className="flex justify-between items-start mb-4">
-                                 {day.activities?.[0]?.location && !day.image && (
-                                   <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-md font-medium">
-                                      {day.activities[0].location}
-                                   </span>
-                                 )}
-                              </div>
-                              
-                              <ul className="space-y-4">
-                                 {day.activities.map((act, actIdx) => (
-                                    <li key={actIdx} className="flex items-start gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                                       <div className="flex-shrink-0 w-16 pt-1">
-                                          <span className="text-sm font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded-md block text-center">
-                                             {act.time}
-                                          </span>
-                                       </div>
-                                       <div>
-                                          <p className="text-slate-700 leading-snug">{act.description}</p>
-                                       </div>
-                                    </li>
-                                 ))}
-                              </ul>
-                           </div>
-                        </div>
+                     {/* Right Column: Content Card */}
+                     <div className="flex-1 pb-12">
+                         <div className="bg-white rounded-2xl shadow-md border border-slate-100 hover:shadow-lg transition-shadow overflow-hidden">
+                            {day.image && (
+                                <div className="h-48 w-full relative">
+                                        <img 
+                                            src={day.image} 
+                                            className="w-full h-full object-cover" 
+                                            alt={day.title} 
+                                            onError={handleImageError}
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                        <h4 className="absolute bottom-4 left-6 text-xl font-bold text-white shadow-sm">{day.title}</h4>
+                                </div>
+                            )}
+                            <div className="p-6">
+                                {!day.image && <h4 className="text-xl font-bold text-slate-800 mb-4">{day.title}</h4>}
+                                {day.date && <div className="text-sm font-semibold text-orange-500 mb-3">{day.date}</div>}
+                                
+                                <ul className="space-y-6">
+                                    {day.activities.map((act, actIdx) => (
+                                        <li key={actIdx} className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                                            <div className="flex-shrink-0">
+                                                <span className="inline-block text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg min-w-[80px] text-center">
+                                                    {act.time}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <p className="text-slate-700 leading-relaxed text-sm md:text-base">{act.description}</p>
+                                                {act.location && (
+                                                    <span className="inline-block mt-2 text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                                                        📍 {act.location}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                         </div>
                      </div>
                   </div>
                ))}
@@ -569,14 +596,17 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id, 
                 <h3 className="text-3xl font-serif font-bold text-slate-900 mb-8 flex items-center">
                    <Utensils className="w-8 h-8 mr-3 text-orange-500" /> Dining & Culinary
                 </h3>
-                <div className="flex overflow-x-auto pb-8 gap-6 no-scrollbar snap-x">
+                <div className="flex overflow-x-auto pb-8 gap-6 no-scrollbar snap-x -mx-6 px-6 md:-mx-8 md:px-8">
                    {data.restaurants.map((rest, idx) => (
                       <div key={idx} className="min-w-[300px] md:min-w-[350px] snap-center bg-white rounded-3xl overflow-hidden shadow-md border border-slate-100 flex flex-col">
                          <div className="h-48 relative">
                             <img 
-                               src={rest.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80"} 
+                               src={rest.image || getFallbackImage(idx)} 
                                className="w-full h-full object-cover" 
-                               onError={handleImageError}
+                               onError={(e) => {
+                                   e.currentTarget.src = getFallbackImage(idx);
+                                   e.currentTarget.onerror = null;
+                               }}
                             />
                             <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
                                {rest.cuisine}

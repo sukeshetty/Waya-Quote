@@ -4,7 +4,7 @@ import { TravelQuotation, FileUpload, Customer } from './types';
 import QuotationPreview from './components/QuotationPreview';
 import CustomerManager from './components/CustomerManager';
 import LogoStudio from './components/LogoStudio';
-import { Upload, FileText, Send, Download, RefreshCw, AlertCircle, FilePlus, Users, ChevronDown, Wand2 } from 'lucide-react';
+import { Upload, FileText, Send, Download, RefreshCw, AlertCircle, FilePlus, Users, ChevronDown, Wand2, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -14,6 +14,7 @@ const App: React.FC = () => {
   const [quotation, setQuotation] = useState<TravelQuotation | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Navigation & Customer State
   const [view, setView] = useState<'quotation' | 'customers' | 'branding'>('quotation');
@@ -105,63 +106,82 @@ const App: React.FC = () => {
   const downloadPDF = async () => {
     const element = document.getElementById('quotation-preview');
     if (!element) return;
+    
+    setIsExporting(true);
+    // Use timeout to allow UI update to render "Exporting..."
+    setTimeout(async () => {
+        try {
+          // 1. Capture content with higher scale for better clarity (2x)
+          const canvas = await html2canvas(element, { 
+            scale: 2, 
+            useCORS: true,
+            logging: false,
+            allowTaint: true
+          });
+          
+          // 2. Compress to JPEG with 0.85 quality (balanced for size and sharpness)
+          const imgData = canvas.toDataURL('image/jpeg', 0.85);
+          
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          
+          const imgWidth = canvas.width;
+          const imgHeight = canvas.height;
+          
+          // Calculate total height of the image on the PDF
+          const ratio = pdfWidth / imgWidth;
+          const totalPdfHeight = imgHeight * ratio;
 
-    try {
-      // 1. Capture content
-      // scale: 1.5 is a good balance for A4 printing without huge file size
-      // useCORS: true is required to capture images from external domains
-      const canvas = await html2canvas(element, { 
-        scale: 1.5,
-        useCORS: true,
-        logging: false
-      });
-      
-      // 2. Compress to JPEG (0.7 quality) for much smaller file size than PNG
-      const imgData = canvas.toDataURL('image/jpeg', 0.7);
-      
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      
-      // Calculate total height of the image on the PDF
-      const ratio = pdfWidth / imgWidth;
-      const totalPdfHeight = imgHeight * ratio;
+          let heightLeft = totalPdfHeight;
+          let position = 0;
 
-      let heightLeft = totalPdfHeight;
-      let position = 0;
+          // 3. Add first page
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, totalPdfHeight);
+          heightLeft -= pdfHeight;
 
-      // 3. Add first page
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, totalPdfHeight);
-      heightLeft -= pdfHeight;
+          // 4. Loop to add subsequent pages if content overflows
+          while (heightLeft > 0) {
+            position -= pdfHeight; // Move the image "up" for the next page
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, totalPdfHeight);
+            heightLeft -= pdfHeight;
+          }
 
-      // 4. Loop to add subsequent pages if content overflows
-      while (heightLeft > 0) {
-        position -= pdfHeight; // Move the image "up" for the next page
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, totalPdfHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      pdf.save(`${quotation?.customerName || 'Waya'}_Quotation.pdf`);
-    } catch (e) {
-      console.error("Export failed", e);
-      setError("Failed to generate PDF. Please try again.");
-    }
+          pdf.save(`${quotation?.customerName || 'Waya'}_Quotation.pdf`);
+        } catch (e) {
+          console.error("Export failed", e);
+          setError("Failed to generate PDF. Please try again.");
+        } finally {
+            setIsExporting(false);
+        }
+    }, 100);
   };
 
   const downloadPNG = async () => {
     const element = document.getElementById('quotation-preview');
     if (!element) return;
     
-    // Use CORS to ensure external images are captured
-    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-    const link = document.createElement('a');
-    link.download = `${quotation?.customerName || 'Waya'}_Quotation.png`;
-    link.href = canvas.toDataURL();
-    link.click();
+    setIsExporting(true);
+    setTimeout(async () => {
+        try {
+            // Use CORS to ensure external images are captured
+            const canvas = await html2canvas(element, { 
+                scale: 2, 
+                useCORS: true,
+                allowTaint: true 
+            });
+            const link = document.createElement('a');
+            link.download = `${quotation?.customerName || 'Waya'}_Quotation.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (e) {
+            console.error("PNG export failed", e);
+            setError("Failed to download Image. Please try PDF.");
+        } finally {
+            setIsExporting(false);
+        }
+    }, 100);
   };
 
   return (
@@ -213,11 +233,21 @@ const App: React.FC = () => {
         <div className="flex space-x-4 w-[160px] justify-end">
             {view === 'quotation' && quotation && (
                 <>
-                  <button onClick={downloadPNG} className="flex items-center space-x-2 text-sm text-slate-400 hover:text-white transition-colors" title="Download PNG">
-                      <Download className="w-4 h-4" />
+                  <button 
+                    onClick={downloadPNG} 
+                    disabled={isExporting}
+                    className="flex items-center space-x-2 text-sm text-slate-400 hover:text-white transition-colors disabled:opacity-50" 
+                    title="Download PNG"
+                  >
+                      {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   </button>
-                  <button onClick={downloadPDF} className="flex items-center space-x-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-sm transition-colors border border-slate-700">
-                      <FileText className="w-4 h-4" /> <span>PDF</span>
+                  <button 
+                    onClick={downloadPDF} 
+                    disabled={isExporting}
+                    className="flex items-center space-x-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-sm transition-colors border border-slate-700 disabled:opacity-50"
+                  >
+                      {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                      <span>{isExporting ? '...' : 'PDF'}</span>
                   </button>
                 </>
             )}
@@ -338,9 +368,9 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Panel: Preview */}
-            <div className="flex-1 bg-slate-200 overflow-y-auto relative p-4 md:p-8 flex justify-center">
-                <div className="w-full max-w-4xl transition-all duration-500 ease-in-out">
+            {/* Right Panel: Preview - Adjusted for Full Width Alignment */}
+            <div className="flex-1 bg-slate-200 overflow-y-auto relative p-0">
+                <div className="w-full min-h-screen transition-all duration-500 ease-in-out">
                     <QuotationPreview 
                       id="quotation-preview"
                       data={quotation} 

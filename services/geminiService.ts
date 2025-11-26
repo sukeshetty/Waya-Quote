@@ -49,6 +49,15 @@ const isQuotaError = (e: any): boolean => {
   );
 };
 
+// Helper for 500 errors
+const isInternalError = (e: any): boolean => {
+    const status = e.status || e.code;
+    const msg = e.message || e.toString();
+    return status === 500 || status === 503 || status === "INTERNAL" || msg.includes("Internal error");
+};
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const generateQuotation = async (
   textInput: string,
   files: FileUpload[]
@@ -83,28 +92,59 @@ export const generateQuotation = async (
   }
 
   // 1. Generate the initial structured data using Google Search Grounding for accuracy
+  // IMPLEMENTING RETRY LOGIC FOR 500 ERRORS
   let response;
-  try {
-    response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: {
-        role: "user",
-        parts: parts,
-      },
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        tools: [{ googleSearch: {} }], // Enable Search Grounding
-      },
-    });
-  } catch (e) {
-    if (isQuotaError(e)) {
-      throw new Error("AI Text Generation Quota Exceeded. Please try again later.");
-    }
-    throw e;
+  let lastError;
+  const maxRetries = 3;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+          // Attempt 1 & 2: Use Google Search (Tools)
+          // Attempt 3: Fallback to NO Tools to prevent crashing if the tool is the cause of the 500 error
+          const useTools = attempt < 2;
+          
+          if (attempt > 0) {
+              console.warn(`Retry attempt ${attempt + 1} for text generation... (Tools: ${useTools})`);
+              await sleep(1000 * attempt); // Exponential backoff
+          }
+
+          response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: {
+                role: "user",
+                parts: parts,
+            },
+            config: {
+                systemInstruction: SYSTEM_INSTRUCTION,
+                tools: useTools ? [{ googleSearch: {} }] : undefined,
+            },
+          });
+
+          // If successful, break the loop
+          break;
+
+      } catch (e: any) {
+          lastError = e;
+          
+          if (isQuotaError(e)) {
+             throw new Error("AI Text Generation Quota Exceeded. Please try again later.");
+          }
+
+          if (isInternalError(e)) {
+             // If it's the last attempt, we let it throw outside the loop
+             if (attempt === maxRetries - 1) continue; 
+             // Otherwise continue to next iteration (retry)
+             continue;
+          }
+
+          // For other errors (400, etc), throw immediately
+          throw e;
+      }
   }
 
-  if (!response.text) {
-    throw new Error("No response from AI");
+  if (!response?.text) {
+      console.error("Final API Error:", lastError);
+      throw lastError || new Error("Failed to generate response from AI after multiple attempts.");
   }
 
   // Parse JSON manually, handling potential Markdown code blocks more robustly
@@ -165,16 +205,15 @@ export const generateQuotation = async (
   // Restaurant Images
   if (quotationData.restaurants) {
     quotationData.restaurants.forEach(restaurant => {
-      const isValid = isDirectImage(restaurant.image || '');
+      // ALWAYS Clear the image from text model to prevent duplicate placeholders.
+      // We rely on either the unique AI image generation OR the curated UI fallback list.
+      restaurant.image = ""; 
 
-      if (!isValid) {
-        restaurant.image = ""; // Clear invalid URL
-        imageTasks.push(
-          generateTravelImage(`Delicious plated food at ${restaurant.name}, ${restaurant.cuisine} cuisine, fine dining atmosphere, food photography`)
-            .then(url => { if (url) restaurant.image = url; })
-            .catch(e => console.error(`Restaurant image generation failed for ${restaurant.name}`, e))
-        );
-      }
+      imageTasks.push(
+        generateTravelImage(`Delicious plated food at ${restaurant.name}, ${restaurant.cuisine} cuisine, fine dining atmosphere, food photography`)
+          .then(url => { if (url) restaurant.image = url; })
+          .catch(e => console.error(`Restaurant image generation failed for ${restaurant.name}`, e))
+      );
     });
   }
 

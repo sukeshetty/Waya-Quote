@@ -98,7 +98,13 @@ const FlightOnlyView: React.FC<{ data: TravelQuotation; id: string }> = ({ data,
 
          {/* Flight Cards */}
          <div className="space-y-4">
-            {data.flights.map((flight, idx) => (
+            {data.flights.map((flight, idx) => {
+               const isNonStop = !flight.stops || flight.stops.toLowerCase().includes('non') || flight.stops.toLowerCase().includes('direct');
+               const stopColor = isNonStop ? 'text-green-600' : 'text-orange-600';
+               const duration = flight.duration || 'N/A';
+               const stops = flight.stops || 'Non-stop';
+               
+               return (
                <div key={idx} className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
                   
                   {/* Badge */}
@@ -121,7 +127,7 @@ const FlightOnlyView: React.FC<{ data: TravelQuotation; id: string }> = ({ data,
                         </div>
                      </div>
 
-                     {/* Times */}
+                     {/* Times & Timeline */}
                      <div className="flex items-center justify-center gap-4 w-full md:w-1/2">
                         <div className="text-right">
                            <div className="text-2xl font-bold text-slate-800">{flight.departureTime}</div>
@@ -129,11 +135,14 @@ const FlightOnlyView: React.FC<{ data: TravelQuotation; id: string }> = ({ data,
                         </div>
                         
                         <div className="flex flex-col items-center w-32 px-2">
-                           <div className="text-xs text-slate-400 mb-1">Non-stop</div>
-                           <div className="w-full h-px bg-slate-300 relative">
+                           <div className="text-xs text-slate-500 mb-1 font-medium">{duration}</div>
+                           <div className="w-full h-px bg-slate-300 relative flex items-center justify-center">
+                              {!isNonStop && <div className="w-2 h-2 rounded-full bg-slate-400 z-10"></div>}
                               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 border-t border-r border-slate-400 transform rotate-45"></div>
                            </div>
-                           <div className="text-xs text-green-600 mt-1 font-medium">On Time</div>
+                           <div className={`text-xs mt-1 font-bold ${stopColor}`}>
+                              {stops}
+                           </div>
                         </div>
 
                         <div className="text-left">
@@ -154,7 +163,7 @@ const FlightOnlyView: React.FC<{ data: TravelQuotation; id: string }> = ({ data,
                      </div>
                   </div>
                </div>
-            ))}
+            )})}
          </div>
          
          <BrandFooter />
@@ -272,7 +281,7 @@ const HotelOnlyView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, 
   );
 };
 
-// --- Standard Package View (Refined from Previous) ---
+// --- Standard Package View ---
 
 const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id }) => {
   // Fallbacks
@@ -294,7 +303,7 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
       id={id}
       className="bg-slate-50 w-full min-h-screen relative font-sans text-slate-800 pb-20 overflow-hidden"
     >
-      {/* 1. Immersive Hero Section (Inspired by Image 1) */}
+      {/* 1. Immersive Hero Section */}
       <div className="relative h-[85vh] w-full group">
          <img 
             src={heroBg} 
@@ -392,7 +401,7 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
 
       <div className="max-w-5xl mx-auto px-6 space-y-20">
          
-         {/* 3. Summary & Inclusions (Inspired by Image 2 - Pills) */}
+         {/* 3. Summary & Inclusions */}
          <section className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-2">
                <h3 className="text-3xl font-serif font-bold text-slate-900 mb-6">The Experience</h3>
@@ -552,7 +561,10 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
                </h3>
                
                <div className="space-y-4 relative z-10">
-                  {data.flights.map((flight, idx) => (
+                  {data.flights.map((flight, idx) => {
+                     const isNonStop = !flight.stops || flight.stops.toLowerCase().includes('non') || flight.stops.toLowerCase().includes('direct');
+                     
+                     return (
                      <div key={idx} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-colors">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                            <div className="flex items-center gap-4">
@@ -570,9 +582,17 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
                                  <div className="font-bold text-xl">{flight.departureTime}</div>
                                  <div className="text-slate-400">{flight.departureAirport}</div>
                               </div>
-                              <div className="flex-1 max-w-[100px] h-px bg-white/20 relative">
-                                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-waya-400"></div>
+                              
+                              <div className="flex flex-col items-center w-32">
+                                <div className="text-xs text-slate-400 mb-1">{flight.duration || 'N/A'}</div>
+                                <div className="w-full h-px bg-white/20 relative flex items-center justify-center">
+                                   {!isNonStop && <div className="w-1.5 h-1.5 rounded-full bg-waya-400 z-10"></div>}
+                                </div>
+                                <div className={`text-xs mt-1 ${isNonStop ? 'text-green-400' : 'text-orange-400'}`}>
+                                  {flight.stops || 'Non-stop'}
+                                </div>
                               </div>
+
                               <div>
                                  <div className="font-bold text-xl">{flight.arrivalTime}</div>
                                  <div className="text-slate-400">{flight.arrivalAirport}</div>
@@ -580,7 +600,7 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
                            </div>
                         </div>
                      </div>
-                  ))}
+                  )})}
                </div>
             </section>
          )}

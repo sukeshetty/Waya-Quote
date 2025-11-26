@@ -6,6 +6,8 @@ export interface Flight {
   arrivalTime: string;
   arrivalAirport: string;
   date: string;
+  duration?: string;
+  stops?: string;
 }
 
 export interface Hotel {

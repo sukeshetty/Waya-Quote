@@ -98,6 +98,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdatePrice = (newPrice: string) => {
+    setQuotation(prev => prev ? { ...prev, totalPrice: newPrice } : null);
+  };
+
   const downloadPDF = async () => {
     const element = document.getElementById('quotation-preview');
     if (!element) return;
@@ -315,7 +319,8 @@ const App: React.FC = () => {
                     <QuotationPreview 
                       id="quotation-preview"
                       data={quotation} 
-                      loading={loading} 
+                      loading={loading}
+                      onUpdatePrice={handleUpdatePrice}
                     />
                 </div>
             </div>

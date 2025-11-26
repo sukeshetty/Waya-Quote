@@ -1,14 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TravelQuotation } from '../types';
-import { Plane, Hotel, Calendar, CheckCircle, Info, MapPin, Utensils, Check, Clock, Globe, ArrowRight, Star, Shield, ThumbsUp, Quote } from 'lucide-react';
+import { Plane, Hotel, Calendar, CheckCircle, Info, MapPin, Utensils, Check, Clock, Globe, ArrowRight, Star, Shield, ThumbsUp, Quote, Edit2 } from 'lucide-react';
 
 interface QuotationPreviewProps {
   data: TravelQuotation | null;
   loading: boolean;
   id: string;
+  onUpdatePrice?: (newPrice: string) => void;
 }
 
-const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }) => {
+const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id, onUpdatePrice }) => {
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [tempPrice, setTempPrice] = useState('');
+
+  // Helper to handle broken images
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop";
+    e.currentTarget.onerror = null; // Prevent infinite loop
+  };
+
+  const startEditingPrice = () => {
+    if (data) {
+        setTempPrice(data.totalPrice);
+        setIsEditingPrice(true);
+    }
+  };
+
+  const savePrice = () => {
+    if (onUpdatePrice && tempPrice) {
+        onUpdatePrice(tempPrice);
+    }
+    setIsEditingPrice(false);
+  };
+
   if (loading) {
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center bg-slate-50 relative overflow-hidden">
@@ -88,7 +112,22 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                    <p className="text-blue-200 text-sm mt-1">{data.flights.length} flights found for {data.destination}</p>
                 </div>
                 <div className="text-right">
-                   <div className="text-3xl font-bold">{data.totalPrice}</div>
+                   {isEditingPrice ? (
+                       <div className="flex items-center gap-2">
+                           <input 
+                               type="text" 
+                               value={tempPrice}
+                               onChange={(e) => setTempPrice(e.target.value)}
+                               className="bg-blue-800 text-white border border-blue-500 rounded px-2 py-1 w-32 text-right font-bold"
+                           />
+                           <button onClick={savePrice} className="bg-green-500 p-1 rounded hover:bg-green-600"><Check className="w-4 h-4" /></button>
+                       </div>
+                   ) : (
+                       <div className="flex items-center justify-end gap-2 group cursor-pointer" onClick={startEditingPrice}>
+                           <div className="text-3xl font-bold">{data.totalPrice}</div>
+                           <Edit2 className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                       </div>
+                   )}
                    <div className="text-sm text-blue-200">{data.currency} Total</div>
                 </div>
             </div>
@@ -200,6 +239,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                           <img 
                              src={hotel.image || "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80"} 
                              alt={hotel.name}
+                             onError={handleImageError}
                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                           />
                           <button className="absolute top-3 right-3 p-2 bg-white/80 rounded-full hover:bg-white text-slate-600 transition-colors">
@@ -233,12 +273,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                                 ))}
                              </div>
 
-                             {hotel.recentReview && (
-                                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex gap-2">
-                                    <Quote className="w-4 h-4 text-blue-400 flex-shrink-0 fill-current" />
-                                    <p className="text-xs text-blue-800 italic line-clamp-2">"{hotel.recentReview}"</p>
-                                </div>
-                             )}
+                             {/* Removed customer review text as requested */}
                           </div>
                           
                           <div className="flex items-end justify-between mt-4 pt-4 border-t border-slate-100">
@@ -275,6 +310,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
          <img 
             src={heroBg} 
             alt={data.destination} 
+            onError={handleImageError}
             className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
          />
          {/* Gradient Overlay */}
@@ -316,8 +352,25 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                   
                   <div className="hidden md:block w-px h-8 bg-white/20 mx-4"></div>
 
-                  <div className="bg-white text-slate-900 px-6 py-3 rounded-full font-bold text-lg shadow-xl flex items-center transform transition-transform hover:scale-105 cursor-default">
-                     {data.totalPrice} <span className="text-sm font-normal text-slate-500 ml-1">{data.currency}</span>
+                  <div className="bg-white text-slate-900 px-6 py-3 rounded-full font-bold text-lg shadow-xl flex items-center transform transition-transform cursor-pointer hover:bg-slate-50">
+                     {isEditingPrice ? (
+                       <div className="flex items-center gap-2">
+                           <input 
+                               type="text" 
+                               value={tempPrice}
+                               onChange={(e) => setTempPrice(e.target.value)}
+                               className="bg-slate-100 text-slate-900 border border-slate-300 rounded px-2 py-1 w-32 outline-none text-right font-bold"
+                               autoFocus
+                           />
+                           <button onClick={savePrice} className="text-green-600 hover:text-green-700"><Check className="w-5 h-5" /></button>
+                       </div>
+                     ) : (
+                       <div onClick={startEditingPrice} className="flex items-center gap-2 group">
+                          <span>{data.totalPrice}</span>
+                          <span className="text-sm font-normal text-slate-500">{data.currency}</span>
+                          <Edit2 className="w-4 h-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                       </div>
+                     )}
                   </div>
                </div>
             </div>
@@ -407,6 +460,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                            <img 
                               src={hotel.image || "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80"} 
                               alt={hotel.name} 
+                              onError={handleImageError}
                               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
                            />
                            <div className="absolute top-4 right-4 bg-white/90 backdrop-blur text-slate-900 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
@@ -430,11 +484,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                               <MapPin className="w-3 h-3 mr-1" /> {hotel.location}
                            </p>
                            
-                           {hotel.recentReview && (
-                               <div className="mb-4 bg-slate-50 p-3 rounded-xl text-xs text-slate-600 italic border border-slate-100">
-                                   "{hotel.recentReview}"
-                               </div>
-                           )}
+                           {/* Removed review text for cleaner UI */}
 
                            <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-100">
                               {hotel.amenities?.slice(0, 3).map((am, i) => (
@@ -471,7 +521,12 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                         <div className="flex-1 bg-white rounded-2xl shadow-md border border-slate-100 hover:shadow-lg transition-shadow overflow-hidden">
                            {day.image && (
                                <div className="h-48 w-full relative">
-                                    <img src={day.image} className="w-full h-full object-cover" alt={day.title} />
+                                    <img 
+                                        src={day.image} 
+                                        className="w-full h-full object-cover" 
+                                        alt={day.title} 
+                                        onError={handleImageError}
+                                    />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                                     <h4 className="absolute bottom-4 left-6 text-xl font-bold text-white shadow-sm">{day.title}</h4>
                                </div>
@@ -521,6 +576,7 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
                             <img 
                                src={rest.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80"} 
                                className="w-full h-full object-cover" 
+                               onError={handleImageError}
                             />
                             <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
                                {rest.cuisine}

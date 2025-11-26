@@ -10,7 +10,7 @@ Rules:
    - Use Google Search to find **ACTUAL** details for the hotels mentioned.
    - Find the **real star rating** (e.g. 4.5) and the approximate **number of reviews**.
    - Find a **real, short excerpt** from a recent positive guest review for each hotel.
-   - Attempt to find a **DIRECT public URL** for an image (ending in .jpg, .png) for hotels, restaurants, and itinerary locations. If you find a webpage instead of an image file, leave the image field EMPTY.
+   - Attempt to find a **DIRECT public URL** for an image (ending in .jpg, .png) for hotels and restaurants.
 3. **Granularity is Key**: Pay close attention to specific times mentioned for activities (e.g., "09:00 AM", "14:30"). If exact times aren't present, infer logical times.
 4. **Dining Recommendations**: Identify any specific restaurants or dining experiences mentioned. Extract them into a dedicated 'restaurants' list.
 5. **Flight Details**: Extract duration (e.g., "8h 30m") and stops (e.g., "Non-stop", "1 Stop").
@@ -72,8 +72,6 @@ export const generateQuotation = async (
   }
 
   // 1. Generate the initial structured data using Google Search Grounding for accuracy
-  // NOTE: responseMimeType: 'application/json' cannot be used combined with tools.
-  // We rely on the System Instruction to enforce JSON structure and parse the text manually.
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: {
@@ -90,10 +88,21 @@ export const generateQuotation = async (
     throw new Error("No response from AI");
   }
 
-  // Parse JSON manually, handling potential Markdown code blocks
+  // Parse JSON manually, handling potential Markdown code blocks more robustly
   let cleanText = response.text.trim();
-  // Remove markdown code blocks if present
-  cleanText = cleanText.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+  const codeBlockMatch = cleanText.match(/```json([\s\S]*?)```/) || cleanText.match(/```([\s\S]*?)```/);
+  if (codeBlockMatch) {
+      cleanText = codeBlockMatch[1].trim();
+  }
+
+  // REPAIR STRATEGY:
+  // The schema ends with arrays (inclusions, exclusions, travelTips).
+  // If the model output is truncated or malformed, it often misses the closing ']' for the last array.
+  // We check if it ends with '}' but NOT ']}' (ignoring whitespace).
+  if (cleanText.endsWith('}') && !cleanText.match(/\]\s*\}$/)) {
+      // It likely looks like "... "some tip" }" so we insert the missing bracket.
+      cleanText = cleanText.substring(0, cleanText.length - 1) + '] }';
+  }
 
   let quotationData: TravelQuotation;
   try {
@@ -104,43 +113,33 @@ export const generateQuotation = async (
   }
 
   // 2. Parallel Visual Enrichment
-  // We fire off image generation requests to "fill in the gaps" if real images weren't found
-  // or to generate the Hero image.
-  
   const imageTasks: Promise<void>[] = [];
 
   // Helper regex to check if a URL is likely a direct image
   const isDirectImage = (url: string) => {
     if (!url) return false;
     if (url.startsWith('data:')) return true;
+    // Strict check for extension
     return url.startsWith('http') && /\.(jpeg|jpg|gif|png|webp)$/i.test(url.split('?')[0]);
   };
 
-  // Hero Image (Always generate a fresh cinematic one for the 'wow' factor, 
-  // ignoring text model output unless it's a specific data uri we somehow passed)
-  if (!quotationData.heroImage || !quotationData.heroImage.startsWith('data:')) {
-    imageTasks.push(
-      generateTravelImage(`Cinematic 8k wide shot of ${quotationData.destination}, golden hour, travel photography, breathtaking view`)
-        .then(url => { if (url) quotationData.heroImage = url; })
-        .catch(e => console.error("Hero generation failed", e))
-    );
-  }
+  // Force AI Generation for Hero Image to ensure it's "stunning" and definitely renders
+  imageTasks.push(
+    generateTravelImage(`Cinematic 8k wide shot of ${quotationData.destination}, golden hour, travel photography, breathtaking view`)
+    .then(url => { if (url) quotationData.heroImage = url; })
+    .catch(e => console.error("Hero generation failed", e))
+  );
 
-  // Hotel Images
+  // Hotel Images - ALWAYS FORCE AI GENERATION
+  // We ignore the search result image to ensure we have a rendering, high-quality asset.
   if (quotationData.hotels) {
     quotationData.hotels.forEach(hotel => {
-      // Validate the URL from the text model. 
-      // If it's a webpage URL (common with search grounding), discard it and generate a new one.
-      const isValid = isDirectImage(hotel.image || '');
-      
-      if (!isValid) {
-        hotel.image = ""; // Clear invalid URL
-        imageTasks.push(
-          generateTravelImage(`Luxury hotel exterior of ${hotel.name} in ${hotel.location}, architectural photography, 4k`)
-            .then(url => { if (url) hotel.image = url; })
-            .catch(e => console.error(`Hotel image generation failed for ${hotel.name}`, e))
-        );
-      }
+      hotel.image = ""; // Clear potentially broken search link
+      imageTasks.push(
+        generateTravelImage(`Luxury hotel exterior of ${hotel.name} in ${hotel.location}, sunny day, architectural photography, 4k, photorealistic`)
+          .then(url => { if (url) hotel.image = url; })
+          .catch(e => console.error(`Hotel image generation failed for ${hotel.name}`, e))
+      );
     });
   }
 
@@ -160,21 +159,17 @@ export const generateQuotation = async (
     });
   }
 
-  // Itinerary Images
+  // Itinerary Images - Force AI generation for these to ensure coverage
   if (quotationData.itinerary) {
     quotationData.itinerary.forEach(day => {
-      const isValid = isDirectImage(day.image || '');
-
-      if (!isValid) {
-        day.image = ""; // Clear invalid URL
-        // Create a prompt based on the day's title and destination
+        // We generally ignore the text model's image for itinerary as it's often generic or broken
+        // Generating specific images for each day is much richer.
         const prompt = `Travel photography of ${day.title} in ${quotationData.destination}, scenic view, 4k, tourist attraction`;
         imageTasks.push(
           generateTravelImage(prompt)
             .then(url => { if (url) day.image = url; })
             .catch(e => console.error(`Itinerary image generation failed for Day ${day.day}`, e))
         );
-      }
     });
   }
 
@@ -197,8 +192,6 @@ const generateTravelImage = async (prompt: string): Promise<string> => {
             }
         });
 
-        // Parse response for image
-        // The API returns the image in the parts
         if (response.candidates?.[0]?.content?.parts) {
             for (const part of response.candidates[0].content.parts) {
                 if (part.inlineData && part.inlineData.data) {

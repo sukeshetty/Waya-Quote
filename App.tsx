@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { generateQuotation } from './services/geminiService';
-import { TravelQuotation, FileUpload, Customer } from './types';
+import { TravelQuotation, FileUpload, Customer, SavedQuotation } from './types';
 import QuotationPreview from './components/QuotationPreview';
 import CustomerManager from './components/CustomerManager';
 import LogoStudio from './components/LogoStudio';
-import { Upload, FileText, Send, Download, RefreshCw, AlertCircle, FilePlus, Users, ChevronDown, Wand2 } from 'lucide-react';
+import SavedQuotationsList from './components/SavedQuotationsList';
+import { Upload, FileText, Send, Download, RefreshCw, AlertCircle, FilePlus, Users, ChevronDown, Wand2, BookOpen, Save } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -15,19 +16,31 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Navigation & Customer State
-  const [view, setView] = useState<'quotation' | 'customers' | 'branding'>('quotation');
+  // Navigation & State
+  const [view, setView] = useState<'quotation' | 'customers' | 'branding' | 'saved'>('quotation');
+  
+  // Customers Persistence
   const [customers, setCustomers] = useState<Customer[]>(() => {
     const saved = localStorage.getItem('waya_customers');
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Saved Quotations Persistence
+  const [savedQuotations, setSavedQuotations] = useState<SavedQuotation[]>(() => {
+    const saved = localStorage.getItem('waya_saved_quotations');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const previewRef = useRef<HTMLDivElement>(null);
 
-  // Persist customers
+  // Persistence Effects
   useEffect(() => {
     localStorage.setItem('waya_customers', JSON.stringify(customers));
   }, [customers]);
+
+  useEffect(() => {
+    localStorage.setItem('waya_saved_quotations', JSON.stringify(savedQuotations));
+  }, [savedQuotations]);
 
   // Customer Actions
   const addCustomer = (c: Omit<Customer, 'id'>) => {
@@ -54,6 +67,33 @@ const App: React.FC = () => {
     }
   };
 
+  // Saved Quotation Actions
+  const saveQuotation = () => {
+    if (!quotation) return;
+    
+    const newSaved: SavedQuotation = {
+      ...quotation,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString()
+    };
+    
+    setSavedQuotations(prev => [newSaved, ...prev]);
+    // Optional: Add a brief success indication logic here
+    alert('Quotation saved to library!');
+  };
+
+  const deleteSavedQuotation = (id: string) => {
+    setSavedQuotations(prev => prev.filter(q => q.id !== id));
+  };
+
+  const loadSavedQuotation = (q: SavedQuotation) => {
+    // We strip the ID/createdAt when setting it as active to treat it like a fresh generation session
+    const { id, createdAt, ...rest } = q;
+    setQuotation(rest);
+    setView('quotation');
+  };
+
+  // File Handling
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (fileList && fileList.length > 0) {
@@ -114,7 +154,6 @@ const App: React.FC = () => {
       const imgHeight = canvas.height;
       const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
       
-      // Calculate height based on ratio to maintain aspect ratio
       const finalHeight = (imgHeight * pdfWidth) / imgWidth;
 
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, finalHeight);
@@ -168,6 +207,12 @@ const App: React.FC = () => {
             <FilePlus className="w-4 h-4" /> <span className="hidden md:inline">Quotation</span>
           </button>
           <button 
+            onClick={() => setView('saved')}
+            className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 transition-all ${view === 'saved' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+          >
+            <BookOpen className="w-4 h-4" /> <span className="hidden md:inline">Library</span>
+          </button>
+          <button 
             onClick={() => setView('customers')}
             className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 transition-all ${view === 'customers' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
           >
@@ -206,6 +251,12 @@ const App: React.FC = () => {
           />
         ) : view === 'branding' ? (
           <LogoStudio />
+        ) : view === 'saved' ? (
+          <SavedQuotationsList 
+            quotations={savedQuotations}
+            onLoad={loadSavedQuotation}
+            onDelete={deleteSavedQuotation}
+          />
         ) : (
           <>
             {/* Left Panel: Editor */}
@@ -284,7 +335,7 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              <div className="p-6 border-t border-slate-800 bg-slate-900">
+              <div className="p-6 border-t border-slate-800 bg-slate-900 space-y-3">
                 <button
                   onClick={handleGenerate}
                   disabled={loading}
@@ -306,6 +357,16 @@ const App: React.FC = () => {
                     </>
                   )}
                 </button>
+                
+                {quotation && !loading && (
+                   <button
+                     onClick={saveQuotation}
+                     className="w-full py-3 rounded-lg font-medium flex items-center justify-center space-x-2 transition-all bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
+                   >
+                     <Save className="w-5 h-5" />
+                     <span>Save to Library</span>
+                   </button>
+                )}
               </div>
             </div>
 

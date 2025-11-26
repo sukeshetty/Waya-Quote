@@ -6,8 +6,6 @@ export interface Flight {
   arrivalTime: string;
   arrivalAirport: string;
   date: string;
-  duration?: string;
-  stops?: string;
 }
 
 export interface Hotel {
@@ -17,7 +15,6 @@ export interface Hotel {
   checkOut: string;
   amenities: string[];
   roomType: string;
-  image?: string;
 }
 
 export interface Activity {
@@ -31,14 +28,12 @@ export interface ItineraryDay {
   date: string;
   title: string;
   activities: Activity[];
-  image?: string;
 }
 
 export interface Restaurant {
   name: string;
   cuisine: string;
   description: string;
-  image?: string;
 }
 
 export interface TravelQuotation {
@@ -57,12 +52,6 @@ export interface TravelQuotation {
   inclusions: string[];
   exclusions: string[];
   travelTips: string[];
-  heroImage?: string;
-}
-
-export interface SavedQuotation extends TravelQuotation {
-  id: string;
-  createdAt: string;
 }
 
 export interface FileUpload {

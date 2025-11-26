@@ -1,6 +1,6 @@
 import React from 'react';
 import { TravelQuotation } from '../types';
-import { Plane, Hotel, Calendar, CheckCircle, Info, MapPin, Utensils, Check, Clock, Globe, ArrowRight, Star, Shield, Wifi, Coffee, ChevronRight, ThumbsUp } from 'lucide-react';
+import { Plane, Hotel, Calendar, CheckCircle, Info, MapPin, Utensils, Check, Clock, Globe, ArrowRight, Star, Shield } from 'lucide-react';
 
 interface QuotationPreviewProps {
   data: TravelQuotation | null;
@@ -19,10 +19,9 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
               <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
               <div className="absolute inset-0 border-4 border-t-waya-500 rounded-full animate-spin"></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                 {/* Waya Logo SVG */}
-                 <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 animate-pulse">
-                   <path d="M14 16L20 34L26 16M22 16L28 34L34 16" stroke="#0EA5E9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-                 </svg>
+                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 animate-pulse">
+                  <path d="M14 16L20 34L26 16M22 16L28 34L34 16" stroke="#0EA5E9" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </div>
            </div>
            <div>
@@ -44,246 +43,6 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id }
     );
   }
 
-  // Detect Quotation Type
-  const hasFlights = data.flights && data.flights.length > 0;
-  const hasHotels = data.hotels && data.hotels.length > 0;
-  const isFlightOnly = hasFlights && !hasHotels;
-  const isHotelOnly = hasHotels && !hasFlights;
-
-  // Render Logic
-  if (isFlightOnly) {
-    return <FlightOnlyView data={data} id={id} />;
-  }
-
-  if (isHotelOnly) {
-    return <HotelOnlyView data={data} id={id} />;
-  }
-
-  return <PackageView data={data} id={id} />;
-};
-
-// --- Specialized Views ---
-
-const FlightOnlyView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id }) => {
-  return (
-    <div id={id} className="min-h-screen bg-slate-100 font-sans text-slate-800 pb-12">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-6 md:p-10 shadow-lg">
-         <h1 className="text-3xl font-bold font-serif mb-2">Departing to {data.destination}</h1>
-         <div className="flex items-center text-blue-200 space-x-4 text-sm">
-            <span>{data.flights.length} flights found</span>
-            <span>•</span>
-            <span>{data.startDate} - {data.endDate}</span>
-            <span>•</span>
-            <span>{data.customerName}</span>
-         </div>
-      </div>
-
-      <div className="max-w-5xl mx-auto -mt-8 px-4 relative z-10 space-y-6">
-         {/* Filter Tabs Mockup */}
-         <div className="bg-white rounded-lg shadow-md p-1 grid grid-cols-3 text-center text-sm font-medium">
-            <div className="py-3 bg-blue-50 text-blue-700 rounded border-b-2 border-blue-600 cursor-pointer">
-              <div className="font-bold">Recommended</div>
-              <div className="text-xs font-normal opacity-80">{data.totalPrice}</div>
-            </div>
-            <div className="py-3 text-slate-500 hover:bg-slate-50 cursor-pointer">
-              <div className="font-bold">Cheapest</div>
-              <div className="text-xs font-normal opacity-80">Save 15%</div>
-            </div>
-            <div className="py-3 text-slate-500 hover:bg-slate-50 cursor-pointer">
-              <div className="font-bold">Fastest</div>
-              <div className="text-xs font-normal opacity-80">Direct</div>
-            </div>
-         </div>
-
-         {/* Flight Cards */}
-         <div className="space-y-4">
-            {data.flights.map((flight, idx) => {
-               const isNonStop = !flight.stops || flight.stops.toLowerCase().includes('non') || flight.stops.toLowerCase().includes('direct');
-               const stopColor = isNonStop ? 'text-green-600' : 'text-orange-600';
-               const duration = flight.duration || 'N/A';
-               const stops = flight.stops || 'Non-stop';
-               
-               return (
-               <div key={idx} className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
-                  
-                  {/* Badge */}
-                  <div className="flex gap-2 mb-4">
-                    {idx === 0 && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded">Best Value</span>}
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs font-bold rounded flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" /> Baggage Included
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                     {/* Airline Info */}
-                     <div className="flex items-center gap-4 w-full md:w-1/4">
-                        <div className="w-12 h-12 bg-slate-900 text-white flex items-center justify-center rounded font-bold text-xs">
-                           {flight.airline.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                           <div className="font-bold text-slate-900">{flight.airline}</div>
-                           <div className="text-xs text-slate-500">{flight.flightNumber}</div>
-                        </div>
-                     </div>
-
-                     {/* Times & Timeline */}
-                     <div className="flex items-center justify-center gap-4 w-full md:w-1/2">
-                        <div className="text-right">
-                           <div className="text-2xl font-bold text-slate-800">{flight.departureTime}</div>
-                           <div className="text-xs text-slate-500 font-medium">{flight.departureAirport}</div>
-                        </div>
-                        
-                        <div className="flex flex-col items-center w-32 px-2">
-                           <div className="text-xs text-slate-500 mb-1 font-medium">{duration}</div>
-                           <div className="w-full h-px bg-slate-300 relative flex items-center justify-center">
-                              {!isNonStop && <div className="w-2 h-2 rounded-full bg-slate-400 z-10"></div>}
-                              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 border-t border-r border-slate-400 transform rotate-45"></div>
-                           </div>
-                           <div className={`text-xs mt-1 font-bold ${stopColor}`}>
-                              {stops}
-                           </div>
-                        </div>
-
-                        <div className="text-left">
-                           <div className="text-2xl font-bold text-slate-800">{flight.arrivalTime}</div>
-                           <div className="text-xs text-slate-500 font-medium">{flight.arrivalAirport}</div>
-                        </div>
-                     </div>
-
-                     {/* Price & Action */}
-                     <div className="flex flex-col items-end gap-2 w-full md:w-1/4 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6">
-                        <div className="text-2xl font-bold text-slate-900">
-                           {data.totalPrice}
-                        </div>
-                        <div className="text-xs text-slate-500 mb-2">per person</div>
-                        <button className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded transition-colors shadow-sm">
-                           Select
-                        </button>
-                     </div>
-                  </div>
-               </div>
-            )})}
-         </div>
-         
-         <BrandFooter />
-      </div>
-    </div>
-  );
-};
-
-const HotelOnlyView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id }) => {
-  return (
-    <div id={id} className="min-h-screen bg-slate-50 font-sans text-slate-800 pb-12">
-      {/* Search Header */}
-      <div className="bg-white border-b border-slate-200 p-4 sticky top-0 z-20 shadow-sm">
-         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-               <h1 className="text-xl font-bold text-slate-900">Stays in {data.destination}</h1>
-               <p className="text-xs text-slate-500">{data.startDate} — {data.endDate} • {data.customerName}</p>
-            </div>
-            <button className="px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition-colors text-sm">
-               Modify Search
-            </button>
-         </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-         {/* Sort Bar */}
-         <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
-            <span className="px-4 py-1.5 bg-white border border-slate-300 rounded-full text-sm font-medium text-slate-700 whitespace-nowrap">Sort by: Recommended</span>
-            <span className="px-4 py-1.5 bg-white border border-slate-300 rounded-full text-sm font-medium text-slate-700 whitespace-nowrap">Price</span>
-            <span className="px-4 py-1.5 bg-white border border-slate-300 rounded-full text-sm font-medium text-slate-700 whitespace-nowrap">Star Rating</span>
-         </div>
-
-         {data.hotels.map((hotel, idx) => (
-            <div key={idx} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row">
-               {/* Image Section */}
-               <div className="md:w-1/3 relative h-64 md:h-auto group">
-                  <img 
-                     src={hotel.image || "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80"} 
-                     alt={hotel.name}
-                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <button className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur rounded-full hover:bg-white text-slate-500 hover:text-red-500 transition-colors">
-                     <ThumbsUp className="w-4 h-4" />
-                  </button>
-               </div>
-
-               {/* Content Section */}
-               <div className="flex-1 p-6 flex flex-col justify-between">
-                  <div>
-                     <div className="flex justify-between items-start mb-2">
-                        <div>
-                           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                              {hotel.name}
-                              <div className="flex text-yellow-400">
-                                 {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 fill-current" />)}
-                              </div>
-                           </h2>
-                           <p className="text-sm text-blue-600 font-medium hover:underline flex items-center gap-1 cursor-pointer">
-                              <MapPin className="w-3 h-3" /> {hotel.location} • Map
-                           </p>
-                        </div>
-                        <div className="flex flex-col items-end">
-                           <div className="bg-blue-900 text-white text-sm font-bold px-2 py-1 rounded-tr-lg rounded-bl-lg">9.2</div>
-                           <span className="text-xs text-slate-500 mt-1">Excellent</span>
-                        </div>
-                     </div>
-
-                     {/* Tags */}
-                     <div className="flex flex-wrap gap-2 mt-4">
-                        <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded border border-slate-200 flex items-center gap-1">
-                           <Wifi className="w-3 h-3" /> Free Wifi
-                        </span>
-                        <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded border border-slate-200 flex items-center gap-1">
-                           <Coffee className="w-3 h-3" /> Breakfast Included
-                        </span>
-                        {hotel.amenities.slice(0, 2).map((am, i) => (
-                           <span key={i} className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded border border-slate-200">
-                              {am}
-                           </span>
-                        ))}
-                     </div>
-                  </div>
-
-                  {/* Price Footer */}
-                  <div className="mt-6 flex items-end justify-between border-t border-slate-100 pt-4">
-                     <div>
-                        <div className="inline-block px-2 py-0.5 bg-red-100 text-red-600 text-xs font-bold rounded mb-1">
-                           Limited Time Offer
-                        </div>
-                        <div className="text-xs text-green-600 font-medium flex items-center gap-1">
-                           <Check className="w-3 h-3" /> Free Cancellation
-                        </div>
-                     </div>
-                     <div className="text-right">
-                        <div className="text-xs text-slate-400 line-through">
-                           {/* Mock strikethrough price logic */}
-                           {(parseInt(data.totalPrice.replace(/[^0-9]/g, '')) * 1.2).toLocaleString()} {data.currency}
-                        </div>
-                        <div className="text-2xl font-bold text-slate-900 leading-none">
-                           {data.totalPrice}
-                        </div>
-                        <div className="text-xs text-slate-500 mb-2">Total price incl. taxes</div>
-                        <button className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition-colors flex items-center gap-2">
-                           Check Availability <ChevronRight className="w-4 h-4" />
-                        </button>
-                     </div>
-                  </div>
-               </div>
-            </div>
-         ))}
-         
-         <BrandFooter />
-      </div>
-    </div>
-  );
-};
-
-// --- Standard Package View ---
-
-const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id }) => {
   // Fallbacks
   const displayInclusions = (data.inclusions && data.inclusions.length > 0) 
     ? data.inclusions 
@@ -303,7 +62,7 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
       id={id}
       className="bg-slate-50 w-full min-h-screen relative font-sans text-slate-800 pb-20 overflow-hidden"
     >
-      {/* 1. Immersive Hero Section */}
+      {/* 1. Immersive Hero Section (Inspired by Image 1) */}
       <div className="relative h-[85vh] w-full group">
          <img 
             src={heroBg} 
@@ -401,7 +160,7 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
 
       <div className="max-w-5xl mx-auto px-6 space-y-20">
          
-         {/* 3. Summary & Inclusions */}
+         {/* 3. Summary & Inclusions (Inspired by Image 2 - Pills) */}
          <section className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-2">
                <h3 className="text-3xl font-serif font-bold text-slate-900 mb-6">The Experience</h3>
@@ -498,6 +257,8 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
                               )}
                            </div>
                            
+                           {/* Day Image (If we had one, but currently we rely on activity text. Could be enhanced later) */}
+                           
                            <ul className="space-y-4">
                               {day.activities.map((act, actIdx) => (
                                  <li key={actIdx} className="flex items-start gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors">
@@ -561,10 +322,7 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
                </h3>
                
                <div className="space-y-4 relative z-10">
-                  {data.flights.map((flight, idx) => {
-                     const isNonStop = !flight.stops || flight.stops.toLowerCase().includes('non') || flight.stops.toLowerCase().includes('direct');
-                     
-                     return (
+                  {data.flights.map((flight, idx) => (
                      <div key={idx} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-colors">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                            <div className="flex items-center gap-4">
@@ -582,17 +340,9 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
                                  <div className="font-bold text-xl">{flight.departureTime}</div>
                                  <div className="text-slate-400">{flight.departureAirport}</div>
                               </div>
-                              
-                              <div className="flex flex-col items-center w-32">
-                                <div className="text-xs text-slate-400 mb-1">{flight.duration || 'N/A'}</div>
-                                <div className="w-full h-px bg-white/20 relative flex items-center justify-center">
-                                   {!isNonStop && <div className="w-1.5 h-1.5 rounded-full bg-waya-400 z-10"></div>}
-                                </div>
-                                <div className={`text-xs mt-1 ${isNonStop ? 'text-green-400' : 'text-orange-400'}`}>
-                                  {flight.stops || 'Non-stop'}
-                                </div>
+                              <div className="flex-1 max-w-[100px] h-px bg-white/20 relative">
+                                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-waya-400"></div>
                               </div>
-
                               <div>
                                  <div className="font-bold text-xl">{flight.arrivalTime}</div>
                                  <div className="text-slate-400">{flight.arrivalAirport}</div>
@@ -600,7 +350,7 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
                            </div>
                         </div>
                      </div>
-                  )})}
+                  ))}
                </div>
             </section>
          )}
@@ -622,34 +372,32 @@ const PackageView: React.FC<{ data: TravelQuotation; id: string }> = ({ data, id
             </div>
          </section>
 
-         <BrandFooter />
+      </div>
+
+      {/* Brand Footer */}
+      <div className="mt-20 py-12 bg-white border-t border-slate-100 text-center">
+         <div className="w-16 h-16 mx-auto mb-4">
+            {/* Waya.AI Logo SVG */}
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+               <path d="M24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44Z" fill="url(#paint0_linear_footer)" fillOpacity="0.2"/>
+               <path d="M14 16L20 34L26 16M22 16L28 34L34 16" stroke="url(#paint1_linear_footer)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+               <defs>
+                  <linearGradient id="paint0_linear_footer" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                     <stop stopColor="#0EA5E9"/>
+                     <stop offset="1" stopColor="#6366F1"/>
+                  </linearGradient>
+                  <linearGradient id="paint1_linear_footer" x1="14" y1="16" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+                     <stop stopColor="#38BDF8"/>
+                     <stop offset="1" stopColor="#818CF8"/>
+                  </linearGradient>
+               </defs>
+            </svg>
+         </div>
+         <h4 className="font-serif font-bold text-xl text-slate-900">Waya.AI</h4>
+         <p className="text-slate-400 text-sm mt-2">Premium AI Travel Experiences</p>
       </div>
     </div>
   );
 };
-
-const BrandFooter = () => (
-  <div className="mt-20 py-12 bg-white border-t border-slate-100 text-center">
-     <div className="w-16 h-16 mx-auto mb-4">
-        {/* Waya.AI Logo SVG */}
-        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-           <path d="M24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44Z" fill="url(#paint0_linear_footer)" fillOpacity="0.2"/>
-           <path d="M14 16L20 34L26 16M22 16L28 34L34 16" stroke="url(#paint1_linear_footer)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-           <defs>
-              <linearGradient id="paint0_linear_footer" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
-                 <stop stopColor="#0EA5E9"/>
-                 <stop offset="1" stopColor="#6366F1"/>
-              </linearGradient>
-              <linearGradient id="paint1_linear_footer" x1="14" y1="16" x2="34" y2="34" gradientUnits="userSpaceOnUse">
-                 <stop stopColor="#38BDF8"/>
-                 <stop offset="1" stopColor="#818CF8"/>
-              </linearGradient>
-           </defs>
-        </svg>
-     </div>
-     <h4 className="font-serif font-bold text-xl text-slate-900">Waya.AI</h4>
-     <p className="text-slate-400 text-sm mt-2">Premium AI Travel Experiences</p>
-  </div>
-);
 
 export default QuotationPreview;

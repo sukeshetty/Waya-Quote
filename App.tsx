@@ -107,8 +107,17 @@ const App: React.FC = () => {
     if (!element) return;
 
     try {
-      const canvas = await html2canvas(element, { scale: 2 });
-      const imgData = canvas.toDataURL('image/png');
+      // 1. Capture content
+      // scale: 1.5 is a good balance for A4 printing without huge file size
+      // useCORS: true is required to capture images from external domains
+      const canvas = await html2canvas(element, { 
+        scale: 1.5,
+        useCORS: true,
+        logging: false
+      });
+      
+      // 2. Compress to JPEG (0.7 quality) for much smaller file size than PNG
+      const imgData = canvas.toDataURL('image/jpeg', 0.7);
       
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -116,15 +125,30 @@ const App: React.FC = () => {
       
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
       
-      // Calculate height based on ratio to maintain aspect ratio
-      const finalHeight = (imgHeight * pdfWidth) / imgWidth;
+      // Calculate total height of the image on the PDF
+      const ratio = pdfWidth / imgWidth;
+      const totalPdfHeight = imgHeight * ratio;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, finalHeight);
+      let heightLeft = totalPdfHeight;
+      let position = 0;
+
+      // 3. Add first page
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, totalPdfHeight);
+      heightLeft -= pdfHeight;
+
+      // 4. Loop to add subsequent pages if content overflows
+      while (heightLeft > 0) {
+        position -= pdfHeight; // Move the image "up" for the next page
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, totalPdfHeight);
+        heightLeft -= pdfHeight;
+      }
+
       pdf.save(`${quotation?.customerName || 'Waya'}_Quotation.pdf`);
     } catch (e) {
       console.error("Export failed", e);
+      setError("Failed to generate PDF. Please try again.");
     }
   };
 
@@ -132,7 +156,8 @@ const App: React.FC = () => {
     const element = document.getElementById('quotation-preview');
     if (!element) return;
     
-    const canvas = await html2canvas(element, { scale: 2 });
+    // Use CORS to ensure external images are captured
+    const canvas = await html2canvas(element, { scale: 2, useCORS: true });
     const link = document.createElement('a');
     link.download = `${quotation?.customerName || 'Waya'}_Quotation.png`;
     link.href = canvas.toDataURL();

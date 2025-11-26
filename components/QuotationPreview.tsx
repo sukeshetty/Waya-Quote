@@ -421,22 +421,22 @@ const QuotationPreview: React.FC<QuotationPreviewProps> = ({ data, loading, id, 
 
       <div className="max-w-5xl mx-auto px-6 space-y-20">
          
-         {/* 3. Summary & Inclusions */}
-         <section className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-            <div className="lg:col-span-2">
+         {/* 3. Summary & Inclusions - Redesigned */}
+         <section className="flex flex-col gap-12">
+            <div className="text-center max-w-4xl mx-auto">
                <h3 className="text-3xl font-serif font-bold text-slate-900 mb-6">The Experience</h3>
                <p className="text-lg text-slate-600 leading-relaxed font-light">
                   {data.summary}
                </p>
             </div>
-            <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100">
-               <h4 className="font-bold text-slate-900 mb-6 flex items-center">
+            <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center">
+               <h4 className="font-bold text-slate-900 mb-6 flex items-center justify-center">
                   <CheckCircle className="w-5 h-5 mr-2 text-emerald-500" />
                   Package Inclusions
                </h4>
-               <div className="flex flex-wrap gap-2">
+               <div className="flex flex-wrap justify-center gap-3">
                   {displayInclusions.map((item, i) => (
-                     <span key={i} className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-full border border-slate-200 transition-colors cursor-default">
+                     <span key={i} className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-sm font-semibold rounded-full border border-slate-200 transition-colors cursor-default">
                         {item}
                      </span>
                   ))}

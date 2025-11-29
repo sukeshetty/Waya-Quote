@@ -1,10 +1,11 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { generateQuotation } from './services/geminiService';
-import { TravelQuotation, FileUpload, Customer } from './types';
+import { TravelQuotation, FileUpload, Customer, Invoice } from './types';
 import QuotationPreview from './components/QuotationPreview';
 import CustomerManager from './components/CustomerManager';
-import LogoStudio from './components/LogoStudio';
-import { Upload, FileText, Send, Download, RefreshCw, AlertCircle, FilePlus, Users, ChevronDown, Wand2, Loader2 } from 'lucide-react';
+import InvoiceManager from './components/InvoiceManager';
+import { Upload, FileText, Send, Download, RefreshCw, AlertCircle, FilePlus, Users, ChevronDown, Wand2, Loader2, Receipt } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -16,19 +17,29 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   
-  // Navigation & Customer State
-  const [view, setView] = useState<'quotation' | 'customers' | 'branding'>('quotation');
+  // Navigation & Data State
+  const [view, setView] = useState<'quotation' | 'customers' | 'invoices'>('quotation');
+  
   const [customers, setCustomers] = useState<Customer[]>(() => {
     const saved = localStorage.getItem('waya_customers');
     return saved ? JSON.parse(saved) : [];
   });
 
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    const saved = localStorage.getItem('waya_invoices');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const previewRef = useRef<HTMLDivElement>(null);
 
-  // Persist customers
+  // Persistence
   useEffect(() => {
     localStorage.setItem('waya_customers', JSON.stringify(customers));
   }, [customers]);
+
+  useEffect(() => {
+    localStorage.setItem('waya_invoices', JSON.stringify(invoices));
+  }, [invoices]);
 
   // Customer Actions
   const addCustomer = (c: Omit<Customer, 'id'>) => {
@@ -42,6 +53,19 @@ const App: React.FC = () => {
 
   const deleteCustomer = (id: string) => {
     setCustomers(prev => prev.filter(c => c.id !== id));
+  };
+
+  // Invoice Actions
+  const addInvoice = (inv: Invoice) => {
+    setInvoices(prev => [...prev, inv]);
+  };
+
+  const updateInvoice = (inv: Invoice) => {
+    setInvoices(prev => prev.map(i => i.id === inv.id ? inv : i));
+  };
+
+  const deleteInvoice = (id: string) => {
+    setInvoices(prev => prev.filter(i => i.id !== id));
   };
 
   const handleSelectCustomer = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -108,19 +132,22 @@ const App: React.FC = () => {
     if (!element) return;
     
     setIsExporting(true);
-    // Use timeout to allow UI update to render "Exporting..."
+    window.scrollTo(0, 0);
+
     setTimeout(async () => {
         try {
-          // 1. Capture content with higher scale for better clarity (2x)
           const canvas = await html2canvas(element, { 
-            scale: 2, 
+            scale: 3, 
             useCORS: true,
             logging: false,
-            allowTaint: true
+            allowTaint: true,
+            backgroundColor: '#f8fafc',
+            scrollY: -window.scrollY,
+            windowWidth: document.documentElement.offsetWidth,
+            windowHeight: document.documentElement.offsetHeight
           });
           
-          // 2. Compress to JPEG with 0.85 quality (balanced for size and sharpness)
-          const imgData = canvas.toDataURL('image/jpeg', 0.85);
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
           
           const pdf = new jsPDF('p', 'mm', 'a4');
           const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -129,20 +156,17 @@ const App: React.FC = () => {
           const imgWidth = canvas.width;
           const imgHeight = canvas.height;
           
-          // Calculate total height of the image on the PDF
           const ratio = pdfWidth / imgWidth;
           const totalPdfHeight = imgHeight * ratio;
 
           let heightLeft = totalPdfHeight;
           let position = 0;
 
-          // 3. Add first page
           pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, totalPdfHeight);
           heightLeft -= pdfHeight;
 
-          // 4. Loop to add subsequent pages if content overflows
           while (heightLeft > 0) {
-            position -= pdfHeight; // Move the image "up" for the next page
+            position -= pdfHeight;
             pdf.addPage();
             pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, totalPdfHeight);
             heightLeft -= pdfHeight;
@@ -155,7 +179,7 @@ const App: React.FC = () => {
         } finally {
             setIsExporting(false);
         }
-    }, 100);
+    }, 500);
   };
 
   const downloadPNG = async () => {
@@ -163,13 +187,16 @@ const App: React.FC = () => {
     if (!element) return;
     
     setIsExporting(true);
+    window.scrollTo(0, 0);
+
     setTimeout(async () => {
         try {
-            // Use CORS to ensure external images are captured
             const canvas = await html2canvas(element, { 
-                scale: 2, 
+                scale: 3,
                 useCORS: true,
-                allowTaint: true 
+                allowTaint: true,
+                backgroundColor: '#f8fafc',
+                scrollY: -window.scrollY
             });
             const link = document.createElement('a');
             link.download = `${quotation?.customerName || 'Waya'}_Quotation.png`;
@@ -181,7 +208,7 @@ const App: React.FC = () => {
         } finally {
             setIsExporting(false);
         }
-    }, 100);
+    }, 500);
   };
 
   return (
@@ -190,20 +217,20 @@ const App: React.FC = () => {
       <nav className="h-16 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-6 z-20 shrink-0">
         <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setView('quotation')}>
           <div className="w-10 h-10 flex items-center justify-center">
-            {/* Waya.AI Logo SVG */}
-            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-              <path d="M24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44Z" fill="url(#paint0_linear)" fillOpacity="0.2"/>
-              <path d="M14 16L20 34L26 16M22 16L28 34L34 16" stroke="url(#paint1_linear)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
+            {/* New Waya 'V' Logo */}
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
               <defs>
-                <linearGradient id="paint0_linear" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#0EA5E9"/>
-                  <stop offset="1" stopColor="#6366F1"/>
+                <linearGradient id="logo_grad_1" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#4F46E5" />
+                  <stop offset="1" stopColor="#7C3AED" />
                 </linearGradient>
-                <linearGradient id="paint1_linear" x1="14" y1="16" x2="34" y2="34" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#38BDF8"/>
-                  <stop offset="1" stopColor="#818CF8"/>
+                <linearGradient id="logo_grad_2" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#EC4899" />
+                  <stop offset="1" stopColor="#F472B6" />
                 </linearGradient>
               </defs>
+              <path d="M12 14 C12 14 28 50 28 50 L36 50 L20 14 Z" fill="url(#logo_grad_1)" />
+              <path d="M52 14 C52 14 36 50 36 50 L44 50 L60 14 Z" fill="url(#logo_grad_2)" />
             </svg>
           </div>
           <span className="text-xl font-serif font-bold tracking-tight">Waya.AI</span>
@@ -223,10 +250,10 @@ const App: React.FC = () => {
             <Users className="w-4 h-4" /> <span className="hidden md:inline">Customers</span>
           </button>
           <button 
-            onClick={() => setView('branding')}
-            className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 transition-all ${view === 'branding' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+            onClick={() => setView('invoices')}
+            className={`px-4 py-2 rounded-md text-sm font-medium flex items-center space-x-2 transition-all ${view === 'invoices' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
           >
-            <Wand2 className="w-4 h-4" /> <span className="hidden md:inline">Branding</span>
+            <Receipt className="w-4 h-4" /> <span className="hidden md:inline">Invoices</span>
           </button>
         </div>
 
@@ -259,18 +286,24 @@ const App: React.FC = () => {
         {view === 'customers' ? (
           <CustomerManager 
             customers={customers}
+            invoices={invoices}
             onAdd={addCustomer}
             onEdit={editCustomer}
             onDelete={deleteCustomer}
           />
-        ) : view === 'branding' ? (
-          <LogoStudio />
+        ) : view === 'invoices' ? (
+          <InvoiceManager 
+            invoices={invoices}
+            customers={customers}
+            onAdd={addInvoice}
+            onUpdate={updateInvoice}
+            onDelete={deleteInvoice}
+          />
         ) : (
           <>
             {/* Left Panel: Editor */}
             <div className="w-full md:w-1/3 lg:w-[400px] flex flex-col border-r border-slate-800 bg-slate-900 z-10 shadow-xl">
               <div className="p-6 flex-1 overflow-y-auto no-scrollbar">
-                
                 {/* Customer Selector */}
                 <div className="mb-6">
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-2">Load Customer Profile</h2>
@@ -295,7 +328,7 @@ const App: React.FC = () => {
                     <label className="text-sm text-slate-300 font-medium">Notes & Itinerary</label>
                     <textarea
                       className="w-full h-64 bg-slate-800 border border-slate-700 rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-waya-500 text-slate-200 placeholder-slate-600 resize-none"
-                      placeholder="Paste flight details, hotel info, or write a rough plan here...&#10;e.g., 'Trip to Paris for John Doe, June 10-15. Flights with Air France. Staying at The Ritz.'"
+                      placeholder="Paste flight details, hotel info, or write a rough plan here..."
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
                     />
@@ -316,7 +349,6 @@ const App: React.FC = () => {
                       <p className="text-sm text-slate-400">Drop itinerary images or PDFs here</p>
                     </div>
                     
-                    {/* File List */}
                     {files.length > 0 && (
                       <div className="space-y-2 mt-4">
                         {files.map((file, idx) => (
@@ -368,7 +400,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Panel: Preview - Adjusted for Full Width Alignment */}
+            {/* Right Panel: Preview */}
             <div className="flex-1 bg-slate-200 overflow-y-auto relative p-0">
                 <div className="w-full min-h-screen transition-all duration-500 ease-in-out">
                     <QuotationPreview 

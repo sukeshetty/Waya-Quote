@@ -1,3 +1,4 @@
+
 export interface Flight {
   airline: string;
   flightNumber: string;
@@ -80,4 +81,54 @@ export interface Customer {
   email: string;
   phone: string;
   preferences: string;
+  // Address details for Invoicing
+  address?: string;
+  gstin?: string;
+}
+
+// --- INVOICING TYPES ---
+
+export interface InvoiceItem {
+  id: string;
+  description: string;
+  particulars?: string; // Additional details replacing auto-calc display
+  hsnSac: string;
+  qty: number;
+  rate: number;
+  // Tax Rates in Percent
+  igstRate: number;
+  cgstRate: number;
+  sgstRate: number;
+}
+
+export interface Invoice {
+  id: string; // e.g. INV-000001
+  invoiceNumber: string;
+  date: string;
+  dueDate: string;
+  
+  // Customer / Bill To
+  customerId: string;
+  customerName: string;
+  customerAddress: string;
+  customerGstin: string;
+  
+  // Seller Details (Defaults to Waya)
+  sellerName: string;
+  sellerAddress: string;
+  sellerGstin: string;
+  sellerContact: string;
+  sellerEmail: string;
+
+  placeOfSupply: string; // e.g. "Karnataka (29)"
+
+  items: InvoiceItem[];
+  
+  notes: string;
+  
+  // Status
+  status: 'Draft' | 'Sent' | 'Paid';
+  
+  // Visuals
+  signatureImage?: string; // Base64 signature
 }

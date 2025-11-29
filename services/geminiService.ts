@@ -53,7 +53,7 @@ const isQuotaError = (e: any): boolean => {
 const isInternalError = (e: any): boolean => {
     const status = e.status || e.code;
     const msg = e.message || e.toString();
-    return status === 500 || status === 503 || status === "INTERNAL" || msg.includes("Internal error");
+    return status === 500 || status === 503 || status === "INTERNAL" || msg.includes("Internal error") || msg.includes("internal_error");
 };
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -92,7 +92,7 @@ export const generateQuotation = async (
   }
 
   // 1. Generate the initial structured data using Google Search Grounding for accuracy
-  // IMPLEMENTING RETRY LOGIC FOR 500 ERRORS
+  // IMPLEMENTING RETRY LOGIC FOR 500 ERRORS WITH EXPONENTIAL BACKOFF
   let response;
   let lastError;
   const maxRetries = 3;
@@ -104,8 +104,9 @@ export const generateQuotation = async (
           const useTools = attempt < 2;
           
           if (attempt > 0) {
-              console.warn(`Retry attempt ${attempt + 1} for text generation... (Tools: ${useTools})`);
-              await sleep(1000 * attempt); // Exponential backoff
+              const backoffTime = 1000 * Math.pow(2, attempt - 1);
+              console.warn(`Retry attempt ${attempt + 1} for text generation... (Tools: ${useTools}). Waiting ${backoffTime}ms.`);
+              await sleep(backoffTime);
           }
 
           response = await ai.models.generateContent({
@@ -174,14 +175,6 @@ export const generateQuotation = async (
   // 2. Parallel Visual Enrichment
   const imageTasks: Promise<void>[] = [];
 
-  // Helper regex to check if a URL is likely a direct image
-  const isDirectImage = (url: string) => {
-    if (!url) return false;
-    if (url.startsWith('data:')) return true;
-    // Strict check for extension
-    return url.startsWith('http') && /\.(jpeg|jpg|gif|png|webp)$/i.test(url.split('?')[0]);
-  };
-
   // Force AI Generation for Hero Image to ensure it's "stunning" and definitely renders
   imageTasks.push(
     generateTravelImage(`Cinematic 8k wide shot of ${quotationData.destination}, golden hour, travel photography, breathtaking view`)
@@ -190,7 +183,6 @@ export const generateQuotation = async (
   );
 
   // Hotel Images - ALWAYS FORCE AI GENERATION
-  // We ignore the search result image to ensure we have a rendering, high-quality asset.
   if (quotationData.hotels) {
     quotationData.hotels.forEach(hotel => {
       hotel.image = ""; // Clear potentially broken search link
@@ -206,7 +198,6 @@ export const generateQuotation = async (
   if (quotationData.restaurants) {
     quotationData.restaurants.forEach(restaurant => {
       // ALWAYS Clear the image from text model to prevent duplicate placeholders.
-      // We rely on either the unique AI image generation OR the curated UI fallback list.
       restaurant.image = ""; 
 
       imageTasks.push(
@@ -220,8 +211,6 @@ export const generateQuotation = async (
   // Itinerary Images - Force AI generation for these to ensure coverage
   if (quotationData.itinerary) {
     quotationData.itinerary.forEach(day => {
-        // We generally ignore the text model's image for itinerary as it's often generic or broken
-        // Generating specific images for each day is much richer.
         const prompt = `Travel photography of ${day.title} in ${quotationData.destination}, scenic view, 4k, tourist attraction`;
         imageTasks.push(
           generateTravelImage(prompt)
@@ -236,37 +225,47 @@ export const generateQuotation = async (
   return quotationData;
 };
 
-// Helper to generate an image using Nano Banana
+// Helper to generate an image using Nano Banana with Retry Logic
 const generateTravelImage = async (prompt: string): Promise<string> => {
     if (!process.env.API_KEY) return "";
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image',
-            contents: { parts: [{ text: prompt }] },
-            config: {
-                // No mime/schema for nano banana image gen
+    const maxRetries = 3;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            if (attempt > 0) {
+                const backoffTime = 1000 * Math.pow(2, attempt - 1);
+                await sleep(backoffTime);
             }
-        });
 
-        if (response.candidates?.[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData && part.inlineData.data) {
-                    return `data:image/png;base64,${part.inlineData.data}`;
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash-image',
+                contents: { parts: [{ text: prompt }] },
+                config: {}
+            });
+
+            if (response.candidates?.[0]?.content?.parts) {
+                for (const part of response.candidates[0].content.parts) {
+                    if (part.inlineData && part.inlineData.data) {
+                        return `data:image/png;base64,${part.inlineData.data}`;
+                    }
                 }
             }
+            return "";
+        } catch (e: any) {
+            if (isQuotaError(e)) {
+                console.warn("Image generation quota exceeded. Skipping AI image generation.");
+                return ""; 
+            }
+            if (isInternalError(e) && attempt < maxRetries - 1) {
+                console.warn(`Image Gen retry ${attempt + 1} for: "${prompt.substring(0, 20)}..."`);
+                continue;
+            }
+            console.error("Image gen error:", e);
+            return ""; // Give up
         }
-        return "";
-    } catch (e: any) {
-        if (isQuotaError(e)) {
-            console.warn("Image generation quota exceeded. Skipping AI image generation.");
-            // Return empty string to allow UI to fallback to Unsplash placeholders
-            return ""; 
-        }
-        console.error("Image gen error:", e);
-        return "";
     }
+    return "";
 };
 
 export const enhanceLogo = async (
@@ -280,45 +279,58 @@ export const enhanceLogo = async (
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const base64Data = imageBase64.split(",")[1];
-
-  try {
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: {
-        parts: [
-            {
-            inlineData: {
-                mimeType: mimeType,
-                data: base64Data,
-            },
-            },
-            {
-            text: `Enhance this logo based on the following instructions: ${prompt}. Return only the image.`,
-            },
-        ],
-        },
-    });
-
-    let generatedImageBase64 = '';
-    if (response.candidates?.[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData && part.inlineData.data) {
-            generatedImageBase64 = `data:image/png;base64,${part.inlineData.data}`;
-            break;
+  
+  const maxRetries = 3;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+        if (attempt > 0) {
+            const backoffTime = 1000 * Math.pow(2, attempt - 1);
+            await sleep(backoffTime);
         }
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+            parts: [
+                {
+                inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data,
+                },
+                },
+                {
+                text: `Enhance this logo based on the following instructions: ${prompt}. Return only the image.`,
+                },
+            ],
+            },
+        });
+
+        let generatedImageBase64 = '';
+        if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData && part.inlineData.data) {
+                generatedImageBase64 = `data:image/png;base64,${part.inlineData.data}`;
+                break;
+            }
+            }
         }
-    }
 
-    if (!generatedImageBase64) {
-        throw new Error("No image generated by the model.");
-    }
+        if (!generatedImageBase64) {
+            throw new Error("No image generated by the model.");
+        }
 
-    return generatedImageBase64;
+        return generatedImageBase64;
 
-  } catch (e) {
-    if (isQuotaError(e)) {
-        throw new Error("Daily image generation quota reached. Please try again later.");
+    } catch (e) {
+        if (isQuotaError(e)) {
+            throw new Error("Daily image generation quota reached. Please try again later.");
+        }
+        if (isInternalError(e) && attempt < maxRetries - 1) {
+            console.warn(`Logo enhance retry ${attempt + 1}`);
+            continue;
+        }
+        throw e;
     }
-    throw e;
   }
+  throw new Error("Failed to enhance logo after multiple attempts.");
 };

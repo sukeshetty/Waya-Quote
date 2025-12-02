@@ -383,8 +383,8 @@ const CustomerManager: React.FC<CustomerManagerProps> = ({ customers, invoices =
                             {customerInvoices.map(inv => {
                                 const total = inv.items.reduce((acc, item) => {
                                     const line = item.qty * item.rate;
-                                    // Calc based on Rate %
-                                    const tax = line * ((item.igstRate||0) + (item.cgstRate||0) + (item.sgstRate||0)) / 100;
+                                    // Calc based on Absolute Amounts
+                                    const tax = (item.igst||0) + (item.cgst||0) + (item.sgst||0);
                                     return acc + line + tax;
                                 }, 0);
                                 return (

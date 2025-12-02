@@ -95,7 +95,13 @@ export interface InvoiceItem {
   hsnSac: string;
   qty: number;
   rate: number;
-  // Tax Rates in Percent
+  
+  // Tax Values in Amount (₹) - Used for Total Calculation
+  igst: number;
+  cgst: number;
+  sgst: number;
+
+  // Tax Rates in Percent (%) - Used for Display Label
   igstRate: number;
   cgstRate: number;
   sgstRate: number;
